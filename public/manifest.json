@@ -2,14 +2,14 @@
   "name": "PartidaGolf",
   "short_name": "PartidaGolf",
   "description": "App de puntuación de golf - Stroke Play, Stableford y Match Play",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#10b981",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
