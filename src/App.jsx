@@ -34,15 +34,24 @@ function saveCourses(courses) {
 }
 
 // ===== SCORING HELPERS =====
-function calcStableford(strokes, par) {
+function calcStableford(strokes, par, handicapStrokes = 0) {
   if (strokes <= 0) return 0;
-  const d = strokes - par;
+  // Net strokes = Gross strokes - handicap strokes
+  const netStrokes = strokes - handicapStrokes;
+  const d = netStrokes - par;
   if (d <= -3) return 5;
   if (d === -2) return 4;
   if (d === -1) return 3;
   if (d === 0) return 2;
   if (d === 1) return 1;
   return 0;
+}
+
+function getHoleHandicapStrokes(playerHandicap, holeStrokeIndex) {
+  if (!playerHandicap) return 0;
+  const baseStrokes = Math.floor(playerHandicap / 18);
+  const extraStroke = (playerHandicap % 18) >= holeStrokeIndex ? 1 : 0;
+  return baseStrokes + extraStroke;
 }
 
 function scoreClass(strokes, par) {
@@ -91,10 +100,10 @@ export default function App() {
     system: 'Stroke Play',
   });
   const [players, setPlayers] = useState([
-    { id: 1, name: 'Jugador 1' },
-    { id: 2, name: 'Jugador 2' },
-    { id: 3, name: 'Jugador 3' },
-    { id: 4, name: 'Jugador 4' }
+    { id: 1, name: 'Jugador 1', handicap: 0 },
+    { id: 2, name: 'Jugador 2', handicap: 0 },
+    { id: 3, name: 'Jugador 3', handicap: 0 },
+    { id: 4, name: 'Jugador 4', handicap: 0 }
   ]);
   const [holeIdx, setHoleIdx] = useState(0);
   const [selectedPlayerId, setSelectedPlayerId] = useState(1);
@@ -158,9 +167,10 @@ export default function App() {
   };
 
   // === Player management ===
-  const addPlayer = () => { if (players.length < 4) setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}` }]); };
+  const addPlayer = () => { if (players.length < 4) setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}`, handicap: 0 }]); };
   const removePlayer = (id) => setPlayers(players.filter(p => p.id !== id));
   const renamePlayer = (id, name) => setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
+  const setPlayerHandicap = (id, handicap) => setPlayers(players.map(p => (p.id === id ? { ...p, handicap: parseInt(handicap) || 0 } : p)));
 
   // === Course hole editing ===
   const setPar = (v) => { const h = [...course.holes]; h[holeIdx] = { ...h[holeIdx], par: Math.max(3, Math.min(6, v)) }; setCourse({ ...course, holes: h }); };
@@ -187,7 +197,7 @@ export default function App() {
   // === Computed totals ===
   const totals = useMemo(() => {
     const t = {};
-    players.forEach(p => (t[p.id] = { strokes: 0, stableford: 0, matchPlay: 0 }));
+    players.forEach(p => (t[p.id] = { strokes: 0, netStrokes: 0, stableford: 0, netStableford: 0, matchPlay: 0 }));
     for (let i = 1; i <= config.holes; i++) {
       const hs = scores[i];
       if (!hs) continue;
@@ -195,8 +205,11 @@ export default function App() {
       players.forEach(p => {
         const s = hs[p.id] || 0;
         if (s > 0) {
+          const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
           t[p.id].strokes += s;
-          t[p.id].stableford += calcStableford(s, h.par);
+          t[p.id].netStrokes += (s - hcpStrokes);
+          t[p.id].stableford += calcStableford(s, h.par, 0);
+          t[p.id].netStableford += calcStableford(s, h.par, hcpStrokes);
         }
       });
       const mpWin = calcMatchPlayWinner(hs);
@@ -207,14 +220,16 @@ export default function App() {
 
   const getDisplayScore = (pid) => {
     if (config.system === 'Stroke Play') return totals[pid].strokes;
-    if (config.system === 'Stableford') return totals[pid].stableford;
+    if (config.system === 'Stableford') return totals[pid].netStableford;
+    if (config.system === 'Medal Play') return totals[pid].netStrokes;
     return totals[pid].matchPlay;
   };
 
   const sortedPlayers = useMemo(() => {
     return [...players].sort((a, b) => {
       if (config.system === 'Stroke Play') return (totals[a.id].strokes || Infinity) - (totals[b.id].strokes || Infinity);
-      if (config.system === 'Stableford') return totals[b.id].stableford - totals[a.id].stableford;
+      if (config.system === 'Stableford') return totals[b.id].netStableford - totals[a.id].netStableford;
+      if (config.system === 'Medal Play') return (totals[a.id].netStrokes || Infinity) - (totals[b.id].netStrokes || Infinity);
       return totals[b.id].matchPlay - totals[a.id].matchPlay;
     });
   }, [totals, players, config.system]);
@@ -226,7 +241,7 @@ export default function App() {
     return sortedPlayers[0].id;
   }, [sortedPlayers, config.system, totals]);
 
-  const scoreLabel = config.system === 'Stroke Play' ? 'Golpes' : config.system === 'Stableford' ? 'Puntos' : 'Hoyos';
+  const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : 'Hoyos';
 
   const exportToJson = () => {
     const data = { config, course, players, scores, totals };
@@ -346,6 +361,19 @@ export default function App() {
             </div>
           </div>
 
+          <div className="card">
+            <h2 className="card-title"><Target size={18} /> Sistema de Juego</h2>
+            <div className="form-group">
+              <label>Modalidad</label>
+              <select className="input" value={config.system} onChange={e => setConfig({ ...config, system: e.target.value })}>
+                <option value="Stroke Play">Stroke Play (Bruto)</option>
+                <option value="Medal Play">Medal Play (Neto)</option>
+                <option value="Stableford">Stableford (Neto)</option>
+                <option value="Match Play">Match Play</option>
+              </select>
+            </div>
+          </div>
+
           {/* Players */}
           <div className="card">
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
@@ -354,10 +382,14 @@ export default function App() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {players.map((p, i) => (
-                <div key={p.id} style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input className="input" value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
+                <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
+                    <input type="number" className="input" value={p.handicap} onChange={e => setPlayerHandicap(p.id, e.target.value)} placeholder="Hcp" />
+                  </div>
                   {players.length > 1 && (
-                    <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => removePlayer(p.id)}>
+                    <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none', alignSelf: 'flex-end', marginBottom: '4px' }} onClick={() => removePlayer(p.id)}>
                       <Minus size={18} />
                     </button>
                   )}
@@ -437,14 +469,22 @@ export default function App() {
                 onClick={() => setSelectedPlayerId(p.id)}
               >
                 <div>{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
-                <div className="player-tab-score">{(getDisplayScore(p.id) > 0 && config.system !== 'Match Play') ? '+' : ''}{getDisplayScore(p.id)} {config.system === 'Stableford' ? 'pts' : ''}</div>
+                <div className="player-tab-score">
+                  {config.system === 'Stableford' ? `${totals[p.id].netStableford} pts` : 
+                   config.system === 'Medal Play' ? `${totals[p.id].netStrokes > 0 ? '+' : ''}${totals[p.id].netStrokes}` :
+                   config.system === 'Stroke Play' ? `${totals[p.id].strokes}` :
+                   `${totals[p.id].matchPlay}`}
+                </div>
               </button>
             ))}
           </div>
 
           {/* Hole Info */}
           <div className="hole-info-bar">
-            <span>Hoyo {hole.number}</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 700 }}>Hoyo {hole.number}</span>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>S.I. {hole.handicap}</span>
+            </div>
             <span>PAR {hole.par}</span>
           </div>
 
@@ -535,8 +575,18 @@ export default function App() {
               {sortedPlayers.map((p, i) => (
                 <tr key={p.id} className={i === 0 ? 'leader' : ''}>
                   <td><span className={`pos-badge ${i < 3 ? `pos-${i + 1}` : 'pos-other'}`}>{i + 1}</span></td>
-                  <td style={{ fontWeight: i === 0 ? 700 : 400 }}>{p.name}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{getDisplayScore(p.id)}</td>
+                  <td style={{ fontWeight: i === 0 ? 700 : 400 }}>
+                    {p.name}
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>Hcp: {p.handicap}</div>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{getDisplayScore(p.id)}</div>
+                    {config.system !== 'Match Play' && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                        {config.system === 'Stableford' ? `Bruto: ${totals[p.id].stableford} pts` : `Bruto: ${totals[p.id].strokes}`}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -564,16 +614,41 @@ export default function App() {
                       let display = '–';
                       let cls = '';
                       if (s > 0) {
-                        display = config.system === 'Stableford' ? calcStableford(s, h.par) : s;
+                        const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                        const net = s - hcpStrokes;
+                        
+                        if (config.system === 'Stableford') {
+                          display = calcStableford(s, h.par, hcpStrokes);
+                        } else if (config.system === 'Medal Play') {
+                          display = net;
+                        } else {
+                          display = s;
+                        }
                         cls = scoreClass(s, h.par);
                       }
-                      return <td key={p.id} className={cls}>{display}</td>;
+                      return (
+                        <td key={p.id} className={cls}>
+                          <div>{display}</div>
+                          {s > 0 && config.system !== 'Stroke Play' && (
+                            <div style={{ fontSize: '0.6rem', opacity: 0.6 }}>({s})</div>
+                          )}
+                        </td>
+                      );
                     })}
                   </tr>
                 ))}
                 <tr className="total-row">
                   <td>Total</td><td>{totalPar}</td><td></td>
-                  {players.map(p => <td key={p.id} style={{ color: 'var(--primary)' }}>{getDisplayScore(p.id)}</td>)}
+                  {players.map(p => (
+                    <td key={p.id} style={{ color: 'var(--primary)' }}>
+                      <div style={{ fontWeight: 700 }}>{getDisplayScore(p.id)}</div>
+                      {config.system !== 'Match Play' && config.system !== 'Stroke Play' && (
+                        <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>
+                          B: {config.system === 'Stableford' ? totals[p.id].stableford : totals[p.id].strokes}
+                        </div>
+                      )}
+                    </td>
+                  ))}
                 </tr>
               </tbody>
             </table>
