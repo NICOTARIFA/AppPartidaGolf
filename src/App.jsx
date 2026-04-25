@@ -1,0 +1,602 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown } from 'lucide-react';
+import defaultCourses from './defaultCourses.json';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+// ===== LOCAL STORAGE HELPERS =====
+const COURSES_KEY = 'partidagolf_courses';
+const COURSES_VERSION_KEY = 'partidagolf_courses_version';
+const CURRENT_VERSION = '3'; // Increment when defaultCourses.json changes
+
+function loadCourses() {
+  try {
+    const savedVersion = localStorage.getItem(COURSES_VERSION_KEY);
+    const raw = localStorage.getItem(COURSES_KEY);
+
+    if (raw && savedVersion === CURRENT_VERSION) {
+      const saved = JSON.parse(raw);
+      // Merge: keep default course IDs updated from JSON, preserve user-added courses
+      const defaultIds = new Set(defaultCourses.map(c => c.id));
+      const userCourses = saved.filter(c => !defaultIds.has(c.id));
+      return [...defaultCourses, ...userCourses];
+    }
+  } catch (_) { /* ignore */ }
+
+  // First load or version mismatch: use defaults and save them
+  localStorage.setItem(COURSES_VERSION_KEY, CURRENT_VERSION);
+  localStorage.setItem(COURSES_KEY, JSON.stringify(defaultCourses));
+  return [...defaultCourses];
+}
+
+function saveCourses(courses) {
+  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+  localStorage.setItem(COURSES_VERSION_KEY, CURRENT_VERSION);
+}
+
+// ===== SCORING HELPERS =====
+function calcStableford(strokes, par) {
+  if (strokes <= 0) return 0;
+  const d = strokes - par;
+  if (d <= -3) return 5;
+  if (d === -2) return 4;
+  if (d === -1) return 3;
+  if (d === 0) return 2;
+  if (d === 1) return 1;
+  return 0;
+}
+
+function scoreClass(strokes, par) {
+  if (strokes <= 0) return '';
+  const d = strokes - par;
+  if (d <= -2) return 'score-eagle';
+  if (d === -1) return 'score-birdie';
+  if (d === 0) return 'score-par';
+  if (d === 1) return 'score-bogey';
+  return 'score-double';
+}
+
+function scoreName(strokes, par) {
+  if (strokes <= 0) return '';
+  const d = strokes - par;
+  if (d <= -3) return 'Albatross!';
+  if (d === -2) return 'Eagle!';
+  if (d === -1) return 'Birdie';
+  if (d === 0) return 'Par';
+  if (d === 1) return 'Bogey';
+  if (d === 2) return 'D. Bogey';
+  return `+${d}`;
+}
+
+function calcMatchPlayWinner(holeScores) {
+  if (!holeScores || Object.keys(holeScores).length === 0) return null;
+  let min = Infinity, winners = [];
+  Object.entries(holeScores).forEach(([pid, s]) => {
+    if (s > 0) {
+      if (s < min) { min = s; winners = [pid]; }
+      else if (s === min) winners.push(pid);
+    }
+  });
+  return winners.length === 1 ? winners[0] : null;
+}
+
+export default function App() {
+  const [screen, setScreen] = useState('setup');
+  const [courses, setCourses] = useState(loadCourses);
+  const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || '');
+  const [course, setCourse] = useState(courses[0] || { name: 'Nuevo Campo', holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 })) });
+  const [config, setConfig] = useState({
+    name: 'Partida Amistosa',
+    date: new Date().toISOString().split('T')[0],
+    holes: 18,
+    system: 'Stroke Play',
+  });
+  const [players, setPlayers] = useState([
+    { id: 1, name: 'Jugador 1' },
+    { id: 2, name: 'Jugador 2' },
+    { id: 3, name: 'Jugador 3' },
+    { id: 4, name: 'Jugador 4' }
+  ]);
+  const [holeIdx, setHoleIdx] = useState(0);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(1);
+  const [scores, setScores] = useState({});
+
+  // Ensure selectedPlayerId is valid
+  useEffect(() => {
+    if (players.length > 0 && !players.find(p => p.id === selectedPlayerId)) {
+      setSelectedPlayerId(players[0].id);
+    }
+  }, [players, selectedPlayerId]);
+
+  // Reset to player 1 when changing holes
+  useEffect(() => {
+    if (players.length > 0) {
+      setSelectedPlayerId(players[0].id);
+    }
+  }, [holeIdx]);
+
+  // Persist courses when they change
+  useEffect(() => { saveCourses(courses); }, [courses]);
+
+  const hole = course.holes[holeIdx];
+
+  // === Course management ===
+  const selectCourse = (id) => {
+    const c = courses.find(c => c.id === id);
+    if (c) { setSelectedCourseId(id); setCourse(JSON.parse(JSON.stringify(c))); }
+  };
+
+  const saveCurrentCourse = () => {
+    const idx = courses.findIndex(c => c.id === selectedCourseId);
+    const updated = [...courses];
+    if (idx >= 0) {
+      updated[idx] = { ...course, id: selectedCourseId };
+    } else {
+      const newId = 'course-' + Date.now();
+      updated.push({ ...course, id: newId });
+      setSelectedCourseId(newId);
+    }
+    setCourses(updated);
+  };
+
+  const addNewCourse = () => {
+    const newId = 'course-' + Date.now();
+    const newCourse = {
+      id: newId,
+      name: 'Nuevo Campo',
+      holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 }))
+    };
+    setCourses([...courses, newCourse]);
+    setSelectedCourseId(newId);
+    setCourse(JSON.parse(JSON.stringify(newCourse)));
+  };
+
+  const deleteCourse = (id) => {
+    if (courses.length <= 1) return;
+    const updated = courses.filter(c => c.id !== id);
+    setCourses(updated);
+    if (selectedCourseId === id) { setSelectedCourseId(updated[0].id); setCourse(JSON.parse(JSON.stringify(updated[0]))); }
+  };
+
+  // === Player management ===
+  const addPlayer = () => { if (players.length < 4) setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}` }]); };
+  const removePlayer = (id) => setPlayers(players.filter(p => p.id !== id));
+  const renamePlayer = (id, name) => setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
+
+  // === Course hole editing ===
+  const setPar = (v) => { const h = [...course.holes]; h[holeIdx] = { ...h[holeIdx], par: Math.max(3, Math.min(6, v)) }; setCourse({ ...course, holes: h }); };
+  const setHcp = (v) => { const h = [...course.holes]; h[holeIdx] = { ...h[holeIdx], handicap: Math.max(1, Math.min(18, v)) }; setCourse({ ...course, holes: h }); };
+
+  // === Score management with numbered buttons ===
+  const setScore = (pid, v) => {
+    setScores(s => ({
+      ...s,
+      [hole.number]: { ...(s[hole.number] || {}), [pid]: v },
+    }));
+
+    if (v > 0) {
+      const pIdx = players.findIndex(p => p.id === pid);
+      if (pIdx >= 0 && pIdx < players.length - 1) {
+        setSelectedPlayerId(players[pIdx + 1].id);
+      } else if (pIdx === players.length - 1 && holeIdx < config.holes - 1) {
+        setHoleIdx(i => i + 1);
+      }
+    }
+  };
+
+
+  // === Computed totals ===
+  const totals = useMemo(() => {
+    const t = {};
+    players.forEach(p => (t[p.id] = { strokes: 0, stableford: 0, matchPlay: 0 }));
+    for (let i = 1; i <= config.holes; i++) {
+      const hs = scores[i];
+      if (!hs) continue;
+      const h = course.holes[i - 1];
+      players.forEach(p => {
+        const s = hs[p.id] || 0;
+        if (s > 0) {
+          t[p.id].strokes += s;
+          t[p.id].stableford += calcStableford(s, h.par);
+        }
+      });
+      const mpWin = calcMatchPlayWinner(hs);
+      if (mpWin && t[mpWin]) t[mpWin].matchPlay += 1;
+    }
+    return t;
+  }, [scores, players, config.holes, course]);
+
+  const getDisplayScore = (pid) => {
+    if (config.system === 'Stroke Play') return totals[pid].strokes;
+    if (config.system === 'Stableford') return totals[pid].stableford;
+    return totals[pid].matchPlay;
+  };
+
+  const sortedPlayers = useMemo(() => {
+    return [...players].sort((a, b) => {
+      if (config.system === 'Stroke Play') return (totals[a.id].strokes || Infinity) - (totals[b.id].strokes || Infinity);
+      if (config.system === 'Stableford') return totals[b.id].stableford - totals[a.id].stableford;
+      return totals[b.id].matchPlay - totals[a.id].matchPlay;
+    });
+  }, [totals, players, config.system]);
+
+  const leaderId = useMemo(() => {
+    if (sortedPlayers.length === 0) return null;
+    const score = getDisplayScore(sortedPlayers[0].id);
+    if (score === 0) return null;
+    return sortedPlayers[0].id;
+  }, [sortedPlayers, config.system, totals]);
+
+  const scoreLabel = config.system === 'Stroke Play' ? 'Golpes' : config.system === 'Stableford' ? 'Puntos' : 'Hoyos';
+
+  const exportToJson = () => {
+    const data = { config, course, players, scores, totals };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `partida-${config.name.replace(/\s+/g, '-').toLowerCase()}-${config.date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFinishMatch = () => {
+    let missing = false;
+    for (let i = 1; i <= config.holes; i++) {
+      for (const p of players) {
+        if (!scores[i] || !scores[i][p.id]) {
+          missing = true;
+          break;
+        }
+      }
+      if (missing) break;
+    }
+    
+    if (missing) {
+      alert("Faltan resultados por rellenar. Completa las puntuaciones de todos los hoyos para todos los jugadores antes de finalizar la partida.");
+      return;
+    }
+    exportToJson();
+    setScreen('results');
+  };
+
+  const exportToPDF = async () => {
+    const element = document.getElementById('results-pdf-area');
+    if (!element) return;
+    
+    // Save original styles to restore them later
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    const scrollContainers = element.querySelectorAll('.scroll-x');
+    const originalScrollStyles = [];
+    
+    // Force element to be wide enough to show all content without horizontal scroll
+    element.style.width = 'max-content';
+    element.style.maxWidth = 'none';
+    scrollContainers.forEach(el => {
+      originalScrollStyles.push(el.style.overflowX);
+      el.style.overflowX = 'visible';
+    });
+
+    try {
+      // Allow browser to apply styles before capture
+      await new Promise(r => setTimeout(r, 100));
+      
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' });
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Calculate dynamic PDF height based on aspect ratio
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'p' : 'l',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`partida-${config.name.replace(/\s+/g, '-').toLowerCase()}-${config.date}.pdf`);
+    } catch (err) {
+      console.error('Error al generar PDF', err);
+    } finally {
+      // Restore original styles
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
+      scrollContainers.forEach((el, i) => {
+        el.style.overflowX = originalScrollStyles[i];
+      });
+    }
+  };
+
+  // ======================== SETUP ========================
+  if (screen === 'setup') {
+    return (
+      <div className="app-container fade-in">
+        <header className="golf-tracker-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Flag size={22} /> <span>PartidaGolf</span>
+          </div>
+          <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>Configuración</div>
+        </header>
+        <main className="content-area">
+          <div className="card">
+            <h2 className="card-title"><Target size={18} /> Detalles de la Partida</h2>
+            <div className="form-group">
+              <label>Nombre de la partida</label>
+              <input className="input" value={config.name} onChange={e => setConfig({ ...config, name: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Fecha</label>
+              <input type="date" className="input" value={config.date} onChange={e => setConfig({ ...config, date: e.target.value })} />
+            </div>
+          </div>
+
+          {/* Course selector */}
+          <div className="card">
+            <h2 className="card-title"><MapPin size={18} /> Seleccionar Campo</h2>
+            <div className="course-list">
+              {courses.map(c => (
+                <div key={c.id} className={`course-item ${selectedCourseId === c.id ? 'selected' : ''}`} onClick={() => selectCourse(c.id)}>
+                  <div>
+                    <div className="course-item-name">{c.name}</div>
+                    <div className="course-item-info">Par {c.holes.reduce((s, h) => s + h.par, 0)} · 18 hoyos</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Players */}
+          <div className="card">
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h2 className="card-title" style={{ margin: 0 }}><Users size={18} /> Jugadores</h2>
+              <span className="system-badge">{players.length}/4</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {players.map((p, i) => (
+                <div key={p.id} style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input className="input" value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
+                  {players.length > 1 && (
+                    <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => removePlayer(p.id)}>
+                      <Minus size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {players.length < 4 && (
+              <button className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={addPlayer}><Plus size={18} /> Añadir Jugador</button>
+            )}
+          </div>
+
+          <button className="btn btn-primary" onClick={() => { setScreen('playing'); setHoleIdx(0); setScores({}); }}>
+            <Play size={18} /> Empezar Partida
+          </button>
+        </main>
+      </div>
+    );
+  }
+
+  // ======================== PLAYING ========================
+  if (screen === 'playing') {
+    return (
+      <div className="app-container fade-in playing-screen">
+        <header className="golf-tracker-header">
+          Golf Tracker
+        </header>
+
+        <main className="playing-content">
+          {/* Hole navigation */}
+          <div className="hole-pills-container">
+            {config.holes === 18 ? (
+              <>
+                <div className="hole-pills-row">
+                  {course.holes.slice(0, 9).map((h, i) => (
+                    <button
+                      key={h.number}
+                      className={`hole-pill ${holeIdx === i ? 'active' : ''}`}
+                      onClick={() => setHoleIdx(i)}
+                    >
+                      {h.number}
+                    </button>
+                  ))}
+                </div>
+                <div className="hole-pills-row">
+                  {course.holes.slice(9, 18).map((h, i) => (
+                    <button
+                      key={h.number}
+                      className={`hole-pill ${holeIdx === i + 9 ? 'active' : ''}`}
+                      onClick={() => setHoleIdx(i + 9)}
+                    >
+                      {h.number}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="hole-pills-row">
+                {course.holes.slice(0, 9).map((h, i) => (
+                  <button
+                    key={h.number}
+                    className={`hole-pill ${holeIdx === i ? 'active' : ''}`}
+                    onClick={() => setHoleIdx(i)}
+                  >
+                    {h.number}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Player Tabs */}
+          <div className="player-tabs-container">
+            {players.map(p => (
+              <button
+                key={p.id}
+                className={`player-tab ${selectedPlayerId === p.id ? 'active' : ''}`}
+                onClick={() => setSelectedPlayerId(p.id)}
+              >
+                <div>{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
+                <div className="player-tab-score">{(getDisplayScore(p.id) > 0 && config.system !== 'Match Play') ? '+' : ''}{getDisplayScore(p.id)} {config.system === 'Stableford' ? 'pts' : ''}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Hole Info */}
+          <div className="hole-info-bar">
+            <span>Hoyo {hole.number}</span>
+            <span>PAR {hole.par}</span>
+          </div>
+
+          {/* Score Input */}
+          <div className="score-grid-large">
+            <button
+              className={`score-btn-lg score-btn-eagle ${scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 0 : hole.par - 2)}
+            >
+              <span className="score-btn-num">-2</span>
+              <span className="score-btn-label">Eagle</span>
+            </button>
+            <button
+              className={`score-btn-lg score-btn-birdie ${scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 0 : hole.par - 1)}
+            >
+              <span className="score-btn-num">-1</span>
+              <span className="score-btn-label">Birdie</span>
+            </button>
+            <button
+              className={`score-btn-lg score-btn-par ${scores[hole.number]?.[selectedPlayerId] === hole.par ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par ? 0 : hole.par)}
+            >
+              <span className="score-btn-num">E</span>
+              <span className="score-btn-label">Par</span>
+            </button>
+            <button
+              className={`score-btn-lg score-btn-bogey ${scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 0 : hole.par + 1)}
+            >
+              <span className="score-btn-num">+1</span>
+              <span className="score-btn-label">Bogey</span>
+            </button>
+            <button
+              className={`score-btn-lg score-btn-double ${scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 0 : hole.par + 2)}
+            >
+              <span className="score-btn-num">+2</span>
+              <span className="score-btn-label">D. Bogey</span>
+            </button>
+          </div>
+
+          <div className="bottom-action-bar">
+            <button className="btn-outline" onClick={() => setScreen('results')}>
+              Ver clasificación total
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+          </div>
+
+          {holeIdx === config.holes - 1 && (
+            <div style={{ padding: '0 1rem 1rem' }}>
+              <button className="btn btn-primary" onClick={handleFinishMatch}><Trophy size={18} /> Finalizar Partida</button>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  // ======================== RESULTS ========================
+  const totalPar = course.holes.slice(0, config.holes).reduce((s, h) => s + h.par, 0);
+  return (
+    <div className="app-container fade-in">
+      <header className="golf-tracker-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Trophy size={22} /> <span>Resultados</span>
+        </div>
+        <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>{config.name} · {config.date}</div>
+      </header>
+      <main className="content-area">
+        <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '10px' }}>
+        <div className="winner-card">
+          <div className="winner-trophy"><Trophy size={52} color="var(--gold)" /></div>
+          <div className="winner-label">🏆 ¡Ganador!</div>
+          <div className="winner-name">{leaderId ? players.find(p => p.id === leaderId)?.name : 'Empate'}</div>
+          {leaderId && (
+            <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem', position: 'relative' }}>
+              {getDisplayScore(leaderId)} {scoreLabel}{config.system === 'Stroke Play' && ` (Par ${totalPar})`}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <h2 className="card-title"><Award size={18} /> Clasificación</h2>
+          <table className="scoreboard-table">
+            <thead><tr><th style={{ width: '40px' }}>Pos</th><th>Jugador</th><th style={{ textAlign: 'right' }}>{scoreLabel}</th></tr></thead>
+            <tbody>
+              {sortedPlayers.map((p, i) => (
+                <tr key={p.id} className={i === 0 ? 'leader' : ''}>
+                  <td><span className={`pos-badge ${i < 3 ? `pos-${i + 1}` : 'pos-other'}`}>{i + 1}</span></td>
+                  <td style={{ fontWeight: i === 0 ? 700 : 400 }}>{p.name}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{getDisplayScore(p.id)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="card">
+          <h2 className="card-title"><BarChart3 size={18} /> Detalle Hoyo a Hoyo</h2>
+          <div className="scroll-x">
+            <table className="detail-table">
+              <thead>
+                <tr>
+                  <th>Hoyo</th><th>Par</th><th>Hcp</th>
+                  {players.map(p => <th key={p.id}>{p.name.length > 8 ? p.name.slice(0, 7) + '…' : p.name}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {course.holes.slice(0, config.holes).map(h => (
+                  <tr key={h.number}>
+                    <td style={{ fontWeight: 600 }}>{h.number}</td>
+                    <td>{h.par}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{h.handicap}</td>
+                    {players.map(p => {
+                      const s = scores[h.number]?.[p.id] || 0;
+                      let display = '–';
+                      let cls = '';
+                      if (s > 0) {
+                        display = config.system === 'Stableford' ? calcStableford(s, h.par) : s;
+                        cls = scoreClass(s, h.par);
+                      }
+                      return <td key={p.id} className={cls}>{display}</td>;
+                    })}
+                  </tr>
+                ))}
+                <tr className="total-row">
+                  <td>Total</td><td>{totalPar}</td><td></td>
+                  {players.map(p => <td key={p.id} style={{ color: 'var(--primary)' }}>{getDisplayScore(p.id)}</td>)}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+          <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
+            <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
+          </button>
+          <button className="btn btn-secondary" onClick={exportToPDF}>
+            <FileDown size={18} /> Descargar PDF
+          </button>
+          <button className="btn btn-secondary" onClick={exportToJson}>
+            <Save size={18} /> Descargar Puntuación (JSON)
+          </button>
+          <button className="btn btn-primary" onClick={() => { setScreen('setup'); setHoleIdx(0); setScores({}); }}>
+            <RefreshCcw size={18} /> Nueva Partida
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
