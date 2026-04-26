@@ -274,7 +274,7 @@ export default function App() {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (data) {
       setConfig(data.config);
       setCourse(data.course);
@@ -443,7 +443,7 @@ export default function App() {
       <div className="app-container fade-in">
         <header className="golf-tracker-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Flag size={22} /> <span>PartidaGolf</span>
+            <Flag size={22} /> <span>Partida de Golf by NicoSoft</span>
           </div>
           <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>Configuración</div>
         </header>
@@ -702,6 +702,9 @@ export default function App() {
       <header className="golf-tracker-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Trophy size={22} /> <span>Resultados</span>
+          <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
+            <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
+          </button>
         </div>
         <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>{config.name} · {config.date}</div>
       </header>
@@ -808,9 +811,6 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-          <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
-            <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
-          </button>
           <button className="btn btn-secondary" onClick={exportToPDF}>
             <FileDown size={18} /> Descargar PDF
           </button>
