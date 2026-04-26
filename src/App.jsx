@@ -1,8 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Upload, Share2, Link } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase configuration
+const SUPABASE_URL = 'https://rulvzxpyeghfmyupnwka.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_rOJfO6SqNkrcVv245JpInA_qywetcUE';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ===== LOCAL STORAGE HELPERS =====
 const COURSES_KEY = 'partidagolf_courses';
 const COURSES_VERSION_KEY = 'partidagolf_courses_version';
@@ -108,6 +114,8 @@ export default function App() {
   const [holeIdx, setHoleIdx] = useState(0);
   const [selectedPlayerId, setSelectedPlayerId] = useState(1);
   const [scores, setScores] = useState({});
+  const [matchId, setMatchId] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Ensure selectedPlayerId is valid
   useEffect(() => {
@@ -125,6 +133,55 @@ export default function App() {
 
   // Persist courses when they change
   useEffect(() => { saveCourses(courses); }, [courses]);
+
+  // === Real-time sync ===
+  useEffect(() => {
+    if (!matchId) return;
+
+    const channel = supabase
+      .channel(`match:${matchId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
+        (payload) => {
+          if (payload.new) {
+            // Only update if the local state is different to avoid infinite loops
+            // Using a simple comparison for scores and players
+            if (JSON.stringify(payload.new.scores) !== JSON.stringify(scores)) {
+              setScores(payload.new.scores);
+            }
+            if (JSON.stringify(payload.new.players) !== JSON.stringify(players)) {
+              setPlayers(payload.new.players);
+            }
+            if (JSON.stringify(payload.new.config) !== JSON.stringify(config)) {
+              setConfig(payload.new.config);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [matchId]);
+
+  // Push changes to Supabase
+  useEffect(() => {
+    if (!matchId || isSyncing) return;
+
+    const pushChanges = async () => {
+      setIsSyncing(true);
+      await supabase
+        .from('matches')
+        .update({ config, players, scores, updated_at: new Date() })
+        .eq('id', matchId);
+      setIsSyncing(false);
+    };
+
+    const timer = setTimeout(pushChanges, 1000); // Debounce sync
+    return () => clearTimeout(timer);
+  }, [config, players, scores, matchId]);
 
   const hole = course.holes[holeIdx];
 
@@ -191,6 +248,64 @@ export default function App() {
         setHoleIdx(i => i + 1);
       }
     }
+  };
+
+  const startNewMatch = async (online = false) => {
+    setScores({});
+    setHoleIdx(0);
+    if (online) {
+      const { data, error } = await supabase
+        .from('matches')
+        .insert([{ config, course, players, scores: {} }])
+        .select();
+      if (data && data[0]) {
+        setMatchId(data[0].id);
+      }
+    } else {
+      setMatchId(null);
+    }
+    setScreen('playing');
+  };
+
+  const joinMatch = async (id) => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (data) {
+      setConfig(data.config);
+      setCourse(data.course);
+      setPlayers(data.players);
+      setScores(data.scores);
+      setMatchId(data.id);
+      setScreen('playing');
+    } else {
+      alert("No se encontró la partida con ese ID.");
+    }
+  };
+
+  const importFromJson = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.config && data.players && data.scores) {
+          setConfig(data.config);
+          setPlayers(data.players);
+          setScores(data.scores);
+          if (data.course) setCourse(data.course);
+          alert("Partida cargada correctamente.");
+        }
+      } catch (err) {
+        alert("Error al cargar el archivo JSON.");
+      }
+    };
+    reader.readAsText(file);
   };
 
 
@@ -265,25 +380,24 @@ export default function App() {
       }
       if (missing) break;
     }
-    
+
     if (missing) {
       alert("Faltan resultados por rellenar. Completa las puntuaciones de todos los hoyos para todos los jugadores antes de finalizar la partida.");
       return;
     }
-    exportToJson();
     setScreen('results');
   };
 
   const exportToPDF = async () => {
     const element = document.getElementById('results-pdf-area');
     if (!element) return;
-    
+
     // Save original styles to restore them later
     const originalWidth = element.style.width;
     const originalMaxWidth = element.style.maxWidth;
     const scrollContainers = element.querySelectorAll('.scroll-x');
     const originalScrollStyles = [];
-    
+
     // Force element to be wide enough to show all content without horizontal scroll
     element.style.width = 'max-content';
     element.style.maxWidth = 'none';
@@ -295,20 +409,20 @@ export default function App() {
     try {
       // Allow browser to apply styles before capture
       await new Promise(r => setTimeout(r, 100));
-      
+
       const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' });
       const imgData = canvas.toDataURL('image/png');
-      
+
       // Calculate dynamic PDF height based on aspect ratio
       const pdfWidth = 210; // A4 width in mm
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
+
       const pdf = new jsPDF({
         orientation: pdfHeight > pdfWidth ? 'p' : 'l',
         unit: 'mm',
         format: [pdfWidth, pdfHeight]
       });
-      
+
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`partida-${config.name.replace(/\s+/g, '-').toLowerCase()}-${config.date}.pdf`);
     } catch (err) {
@@ -401,9 +515,38 @@ export default function App() {
             )}
           </div>
 
-          <button className="btn btn-primary" onClick={() => { setScreen('playing'); setHoleIdx(0); setScores({}); }}>
-            <Play size={18} /> Empezar Partida
-          </button>
+          <div className="card">
+            <h2 className="card-title"><RefreshCcw size={18} /> Importar / Unirse</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label>Cargar desde archivo</label>
+                <div style={{ position: 'relative' }}>
+                  <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => document.getElementById('json-import').click()}>
+                    <Upload size={18} /> Cargar JSON
+                  </button>
+                  <input id="json-import" type="file" accept=".json" style={{ display: 'none' }} onChange={importFromJson} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Unirse con ID de partida</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input id="match-id-input" className="input" placeholder="ID de la partida" />
+                  <button className="btn btn-secondary" onClick={() => joinMatch(document.getElementById('match-id-input').value)}>
+                    <Link size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button className="btn btn-primary" onClick={() => startNewMatch(false)}>
+              <Play size={18} /> Empezar Localmente
+            </button>
+            <button className="btn btn-secondary" style={{ background: 'var(--accent)', color: 'white' }} onClick={() => startNewMatch(true)}>
+              <Share2 size={18} /> Empezar Online (Compartido)
+            </button>
+          </div>
         </main>
       </div>
     );
@@ -414,7 +557,15 @@ export default function App() {
     return (
       <div className="app-container fade-in playing-screen">
         <header className="golf-tracker-header">
-          Golf Tracker
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span>Marcador de Partida</span>
+            {matchId && <span style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 400 }}>ID: {matchId.slice(0, 8)}...</span>}
+          </div>
+          {matchId && (
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white' }} onClick={() => { navigator.clipboard.writeText(matchId); alert("ID copiado al portapapeles"); }}>
+              <Share2 size={18} />
+            </button>
+          )}
         </header>
 
         <main className="playing-content">
@@ -470,10 +621,10 @@ export default function App() {
               >
                 <div>{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
                 <div className="player-tab-score">
-                  {config.system === 'Stableford' ? `${totals[p.id].netStableford} pts` : 
-                   config.system === 'Medal Play' ? `${totals[p.id].netStrokes > 0 ? '+' : ''}${totals[p.id].netStrokes}` :
-                   config.system === 'Stroke Play' ? `${totals[p.id].strokes}` :
-                   `${totals[p.id].matchPlay}`}
+                  {config.system === 'Stableford' ? `${totals[p.id].netStableford} pts` :
+                    config.system === 'Medal Play' ? `${totals[p.id].netStrokes > 0 ? '+' : ''}${totals[p.id].netStrokes}` :
+                      config.system === 'Stroke Play' ? `${totals[p.id].strokes}` :
+                        `${totals[p.id].matchPlay}`}
                 </div>
               </button>
             ))}
@@ -483,7 +634,7 @@ export default function App() {
           <div className="hole-info-bar">
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontWeight: 700 }}>Hoyo {hole.number}</span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>S.I. {hole.handicap}</span>
+              <span style={{ fontSize: '0.85rem', color: 'rgba(0, 0, 0, 1)' }}>HCP {hole.handicap}</span>
             </div>
             <span>PAR {hole.par}</span>
           </div>
@@ -556,104 +707,104 @@ export default function App() {
       </header>
       <main className="content-area">
         <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '10px' }}>
-        <div className="winner-card">
-          <div className="winner-trophy"><Trophy size={52} color="var(--gold)" /></div>
-          <div className="winner-label">🏆 ¡Ganador!</div>
-          <div className="winner-name">{leaderId ? players.find(p => p.id === leaderId)?.name : 'Empate'}</div>
-          {leaderId && (
-            <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem', position: 'relative' }}>
-              {getDisplayScore(leaderId)} {scoreLabel}{config.system === 'Stroke Play' && ` (Par ${totalPar})`}
-            </div>
-          )}
-        </div>
+          <div className="winner-card">
+            <div className="winner-trophy"><Trophy size={52} color="var(--gold)" /></div>
+            <div className="winner-label">🏆 ¡Ganador!</div>
+            <div className="winner-name">{leaderId ? players.find(p => p.id === leaderId)?.name : 'Empate'}</div>
+            {leaderId && (
+              <div style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem', position: 'relative' }}>
+                {getDisplayScore(leaderId)} {scoreLabel}{config.system === 'Stroke Play' && ` (Par ${totalPar})`}
+              </div>
+            )}
+          </div>
 
-        <div className="card">
-          <h2 className="card-title"><Award size={18} /> Clasificación</h2>
-          <table className="scoreboard-table">
-            <thead><tr><th style={{ width: '40px' }}>Pos</th><th>Jugador</th><th style={{ textAlign: 'right' }}>{scoreLabel}</th></tr></thead>
-            <tbody>
-              {sortedPlayers.map((p, i) => (
-                <tr key={p.id} className={i === 0 ? 'leader' : ''}>
-                  <td><span className={`pos-badge ${i < 3 ? `pos-${i + 1}` : 'pos-other'}`}>{i + 1}</span></td>
-                  <td style={{ fontWeight: i === 0 ? 700 : 400 }}>
-                    {p.name}
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>Hcp: {p.handicap}</div>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{getDisplayScore(p.id)}</div>
-                    {config.system !== 'Match Play' && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                        {config.system === 'Stableford' ? `Bruto: ${totals[p.id].stableford} pts` : `Bruto: ${totals[p.id].strokes}`}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card">
-          <h2 className="card-title"><BarChart3 size={18} /> Detalle Hoyo a Hoyo</h2>
-          <div className="scroll-x">
-            <table className="detail-table">
-              <thead>
-                <tr>
-                  <th>Hoyo</th><th>Par</th><th>Hcp</th>
-                  {players.map(p => <th key={p.id}>{p.name.length > 8 ? p.name.slice(0, 7) + '…' : p.name}</th>)}
-                </tr>
-              </thead>
+          <div className="card">
+            <h2 className="card-title"><Award size={18} /> Clasificación</h2>
+            <table className="scoreboard-table">
+              <thead><tr><th style={{ width: '40px' }}>Pos</th><th>Jugador</th><th style={{ textAlign: 'right' }}>{scoreLabel}</th></tr></thead>
               <tbody>
-                {course.holes.slice(0, config.holes).map(h => (
-                  <tr key={h.number}>
-                    <td style={{ fontWeight: 600 }}>{h.number}</td>
-                    <td>{h.par}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{h.handicap}</td>
-                    {players.map(p => {
-                      const s = scores[h.number]?.[p.id] || 0;
-                      let display = '–';
-                      let cls = '';
-                      if (s > 0) {
-                        const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
-                        const net = s - hcpStrokes;
-                        
-                        if (config.system === 'Stableford') {
-                          display = calcStableford(s, h.par, hcpStrokes);
-                        } else if (config.system === 'Medal Play') {
-                          display = net;
-                        } else {
-                          display = s;
-                        }
-                        cls = scoreClass(s, h.par);
-                      }
-                      return (
-                        <td key={p.id} className={cls}>
-                          <div>{display}</div>
-                          {s > 0 && config.system !== 'Stroke Play' && (
-                            <div style={{ fontSize: '0.6rem', opacity: 0.6 }}>({s})</div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                <tr className="total-row">
-                  <td>Total</td><td>{totalPar}</td><td></td>
-                  {players.map(p => (
-                    <td key={p.id} style={{ color: 'var(--primary)' }}>
-                      <div style={{ fontWeight: 700 }}>{getDisplayScore(p.id)}</div>
-                      {config.system !== 'Match Play' && config.system !== 'Stroke Play' && (
-                        <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>
-                          B: {config.system === 'Stableford' ? totals[p.id].stableford : totals[p.id].strokes}
+                {sortedPlayers.map((p, i) => (
+                  <tr key={p.id} className={i === 0 ? 'leader' : ''}>
+                    <td><span className={`pos-badge ${i < 3 ? `pos-${i + 1}` : 'pos-other'}`}>{i + 1}</span></td>
+                    <td style={{ fontWeight: i === 0 ? 700 : 400 }}>
+                      {p.name}
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>Hcp: {p.handicap}</div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{getDisplayScore(p.id)}</div>
+                      {config.system !== 'Match Play' && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                          {config.system === 'Stableford' ? `Bruto: ${totals[p.id].stableford} pts` : `Bruto: ${totals[p.id].strokes}`}
                         </div>
                       )}
                     </td>
-                  ))}
-                </tr>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
+
+          <div className="card">
+            <h2 className="card-title"><BarChart3 size={18} /> Detalle Hoyo a Hoyo</h2>
+            <div className="scroll-x">
+              <table className="detail-table">
+                <thead>
+                  <tr>
+                    <th>Hoyo</th><th>Par</th><th>Hcp</th>
+                    {players.map(p => <th key={p.id}>{p.name.length > 8 ? p.name.slice(0, 7) + '…' : p.name}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {course.holes.slice(0, config.holes).map(h => (
+                    <tr key={h.number}>
+                      <td style={{ fontWeight: 600 }}>{h.number}</td>
+                      <td>{h.par}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{h.handicap}</td>
+                      {players.map(p => {
+                        const s = scores[h.number]?.[p.id] || 0;
+                        let display = '–';
+                        let cls = '';
+                        if (s > 0) {
+                          const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                          const net = s - hcpStrokes;
+
+                          if (config.system === 'Stableford') {
+                            display = calcStableford(s, h.par, hcpStrokes);
+                          } else if (config.system === 'Medal Play') {
+                            display = net;
+                          } else {
+                            display = s;
+                          }
+                          cls = scoreClass(s, h.par);
+                        }
+                        return (
+                          <td key={p.id} className={cls}>
+                            <div>{display}</div>
+                            {s > 0 && config.system !== 'Stroke Play' && (
+                              <div style={{ fontSize: '0.6rem', opacity: 0.6 }}>({s})</div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr className="total-row">
+                    <td>Total</td><td>{totalPar}</td><td></td>
+                    {players.map(p => (
+                      <td key={p.id} style={{ color: 'var(--primary)' }}>
+                        <div style={{ fontWeight: 700 }}>{getDisplayScore(p.id)}</div>
+                        {config.system !== 'Match Play' && config.system !== 'Stroke Play' && (
+                          <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>
+                            B: {config.system === 'Stableford' ? totals[p.id].stableford : totals[p.id].strokes}
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
@@ -663,10 +814,7 @@ export default function App() {
           <button className="btn btn-secondary" onClick={exportToPDF}>
             <FileDown size={18} /> Descargar PDF
           </button>
-          <button className="btn btn-secondary" onClick={exportToJson}>
-            <Save size={18} /> Descargar Puntuación (JSON)
-          </button>
-          <button className="btn btn-primary" onClick={() => { setScreen('setup'); setHoleIdx(0); setScores({}); }}>
+          <button className="btn btn-primary" onClick={() => { setScreen('setup'); setHoleIdx(0); setScores({}); setMatchId(null); }}>
             <RefreshCcw size={18} /> Nueva Partida
           </button>
         </div>
