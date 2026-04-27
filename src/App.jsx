@@ -814,7 +814,14 @@ export default function App() {
         <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>{config.name} · {config.date}</div>
       </header>
       <main className="content-area">
-        <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '10px' }}>
+        <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: '#f8fafc' }}>
+          {/* PDF Report Header */}
+          <div style={{ textAlign: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+            <h1 style={{ margin: 0, fontSize: '1.75rem', color: 'var(--primary)', fontWeight: 900 }}>Informe de Partida de Golf</h1>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '0.5rem' }}>{config.name}</div>
+            <div style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '0.25rem' }}>Fecha: {config.date} | Campo: {course.name}</div>
+          </div>
+
           <div className="winner-card">
             <div className="winner-trophy"><Trophy size={52} color="var(--gold)" /></div>
             <div className="winner-label">🏆 ¡Ganador!</div>
