@@ -180,7 +180,7 @@ export default function App() {
             // Only update if the server has a newer version than our last push
             // and the data is actually different
             const serverUpdatedAt = new Date(payload.new.updated_at).getTime();
-            
+
             if (serverUpdatedAt > lastPushTime.current) {
               if (JSON.stringify(payload.new.scores) !== JSON.stringify(scoresRef.current)) {
                 setScores(payload.new.scores);
@@ -210,14 +210,14 @@ export default function App() {
       // Don't push if we just received an update from the server
       const now = Date.now();
       lastPushTime.current = now;
-      
+
       await supabase
         .from('matches')
-        .update({ 
-          config: configRef.current, 
-          players: playersRef.current, 
-          scores: scoresRef.current, 
-          updated_at: new Date(now).toISOString() 
+        .update({
+          config: configRef.current,
+          players: playersRef.current,
+          scores: scoresRef.current,
+          updated_at: new Date(now).toISOString()
         })
         .eq('id', matchId);
     };
@@ -544,14 +544,14 @@ export default function App() {
                       <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
                       <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '20px', textAlign: 'right' }}>{p.handicap}</span>
                     </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="36" 
-                      step="1" 
+                    <input
+                      type="range"
+                      min="0"
+                      max="36"
+                      step="1"
                       className="hcp-slider"
-                      value={p.handicap} 
-                      onChange={e => setPlayerHandicap(p.id, e.target.value)} 
+                      value={p.handicap}
+                      onChange={e => setPlayerHandicap(p.id, e.target.value)}
                     />
                   </div>
                   <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
@@ -642,7 +642,7 @@ export default function App() {
           <div className="modal-overlay" onClick={() => setShowQr(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <h3 style={{ marginBottom: '1rem', textAlign: 'center' }}>Escanear para unirse</h3>
-               <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
                 <QRCodeSVG value={`${window.location.origin}${window.location.pathname}?join=${matchId}`} size={240} />
               </div>
               <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
@@ -709,10 +709,10 @@ export default function App() {
                   onClick={() => setSelectedPlayerId(p.id)}
                 >
                   <div className="player-tab-name">{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
-                  <div className="player-tab-total">T: {totals[p.id].strokes}</div>
+                  <div className="player-tab-total">Total: {totals[p.id].strokes}</div>
                   <div className="player-tab-row">
-                    <span>H: {currentStrokes || '-'}</span>
-                    <span>S: {holeStableford}</span>
+                    <div><span>Golpes: {currentStrokes || '-'}</span></div>
+                    <div><span>Stableford: {holeStableford}</span></div>
                   </div>
                 </button>
               );
