@@ -781,6 +781,17 @@ export default function App() {
               <span className="score-btn-num">{hole.par + 4}</span>
               <span className="score-btn-label">+{hole.par + 4}</span>
             </button>
+            {[5, 6, 7, 8].map(plus => (
+              <button
+                key={plus}
+                className={`score-btn-lg score-btn-other ${scores[hole.number]?.[selectedPlayerId] === hole.par + plus ? 'selected' : ''}`}
+                onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + plus ? 0 : hole.par + plus)}
+                style={{ background: '#2d0f02' }}
+              >
+                <span className="score-btn-num">{hole.par + plus}</span>
+                <span className="score-btn-label">+{hole.par + plus}</span>
+              </button>
+            ))}
           </div>
 
           <div className="bottom-action-bar">

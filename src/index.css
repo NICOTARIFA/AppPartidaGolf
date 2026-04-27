@@ -1173,8 +1173,8 @@ body {
 }
 
 .score-btn-lg {
-  flex: 0 0 100px !important;
-  min-width: 100px !important;
+  flex: 0 0 90px !important;
+  min-width: 90px !important;
   border-radius: 0.75rem;
   padding: 1.1rem 0;
   color: white;
