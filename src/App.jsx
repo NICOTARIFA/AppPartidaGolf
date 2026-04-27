@@ -161,6 +161,32 @@ export default function App() {
   useEffect(() => { playersRef.current = players; }, [players]);
   useEffect(() => { configRef.current = config; }, [config]);
 
+  // Load saved players from Supabase on mount
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        const { data, error } = await supabase.from('players').select('*').order('name');
+        if (data && data.length > 0) {
+          const mapped = data.map(p => ({
+            id: p.id,
+            name: p.name,
+            surname: p.surname || '',
+            license_number: p.license_number || '',
+            handicap: p.handicap || 0,
+            photo: p.photo || null,
+            isFavorite: p.is_favorite || false,
+          }));
+          setSavedPlayers(mapped);
+          localStorage.setItem('partidagolf_saved_players', JSON.stringify(mapped));
+        }
+      } catch (e) {
+        console.warn('No se pudo cargar jugadores de Supabase, usando localStorage', e);
+      }
+    };
+    loadFromSupabase();
+  }, []);
+
+  // Persist to localStorage whenever savedPlayers changes
   useEffect(() => {
     localStorage.setItem('partidagolf_saved_players', JSON.stringify(savedPlayers));
   }, [savedPlayers]);
@@ -343,17 +369,35 @@ export default function App() {
   };
 
   const toggleFavorite = (pid) => {
-    setSavedPlayers(prev => prev.map(p => p.id === pid ? { ...p, isFavorite: !p.isFavorite } : p));
+    setSavedPlayers(prev => {
+      const updated = prev.map(p => p.id === pid ? { ...p, isFavorite: !p.isFavorite } : p);
+      // Sync to Supabase
+      const player = updated.find(p => p.id === pid);
+      if (player) {
+        supabase.from('players').update({ is_favorite: player.isFavorite }).eq('id', pid).then();
+      }
+      return updated;
+    });
   };
 
   const deleteSavedPlayer = (pid) => {
     setSavedPlayers(prev => prev.filter(p => p.id !== pid));
+    // Delete from Supabase
+    supabase.from('players').delete().eq('id', pid).then();
   };
 
   const selectSavedPlayer = (savedP, slotIndex) => {
     setPlayers(prev => {
       const newPlayers = [...prev];
-      newPlayers[slotIndex] = { ...newPlayers[slotIndex], name: savedP.name, handicap: savedP.handicap, photo: savedP.photo || null };
+      newPlayers[slotIndex] = {
+        ...newPlayers[slotIndex],
+        name: savedP.name,
+        surname: savedP.surname || '',
+        license_number: savedP.license_number || '',
+        handicap: savedP.handicap,
+        photo: savedP.photo || null,
+        savedPlayerId: savedP.id, // link to DB record
+      };
       return newPlayers;
     });
     setShowPlayerPicker(false);
@@ -363,21 +407,63 @@ export default function App() {
     setScores({});
     setHoleIdx(0);
 
-    // Save current players to history - update existing or add new
+    // Save current players to history - update existing or add new, sync to Supabase
+    const upsertPromises = [];
     setSavedPlayers(prev => {
       let updated = [...prev];
       players.forEach(p => {
         if (!p.name) return;
         const existingIdx = updated.findIndex(up => up.name.toLowerCase() === p.name.toLowerCase());
         if (existingIdx >= 0) {
-          // Update photo and handicap for existing player
-          updated[existingIdx] = { ...updated[existingIdx], handicap: p.handicap, photo: p.photo || updated[existingIdx].photo };
+          // Update existing player
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            handicap: p.handicap,
+            photo: p.photo || updated[existingIdx].photo,
+            surname: p.surname || updated[existingIdx].surname || '',
+            license_number: p.license_number || updated[existingIdx].license_number || '',
+          };
+          // Sync update to Supabase
+          const dbPlayer = updated[existingIdx];
+          upsertPromises.push(
+            supabase.from('players').update({
+              handicap: dbPlayer.handicap,
+              photo: dbPlayer.photo,
+              surname: dbPlayer.surname,
+              license_number: dbPlayer.license_number,
+              updated_at: new Date().toISOString(),
+            }).eq('id', dbPlayer.id)
+          );
         } else {
-          updated.push({ id: Date.now() + Math.random(), name: p.name, handicap: p.handicap, photo: p.photo || null, isFavorite: false });
+          const newId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+          const newPlayer = {
+            id: newId,
+            name: p.name,
+            surname: p.surname || '',
+            license_number: p.license_number || '',
+            handicap: p.handicap,
+            photo: p.photo || null,
+            isFavorite: false,
+          };
+          updated.push(newPlayer);
+          // Insert to Supabase
+          upsertPromises.push(
+            supabase.from('players').insert([{
+              id: newId,
+              name: p.name,
+              surname: p.surname || '',
+              license_number: p.license_number || '',
+              handicap: p.handicap,
+              photo: p.photo || null,
+              is_favorite: false,
+            }])
+          );
         }
       });
       return updated;
     });
+    // Execute all Supabase operations
+    Promise.all(upsertPromises).catch(e => console.warn('Error syncing players to Supabase', e));
 
     if (online) {
       const { data, error } = await supabase
@@ -674,14 +760,21 @@ export default function App() {
                       .filter(sp => playerFilter === 'all' || sp.isFavorite)
                       .map(sp => (
                         <div key={sp.id} className="saved-player-item">
-                          {sp.photo && (
+                          {sp.photo ? (
                             <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
                               <img src={sp.photo} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
+                          ) : (
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Users size={16} color="#94a3b8" />
+                            </div>
                           )}
                           <div style={{ flex: 1 }} onClick={() => selectSavedPlayer(sp, showPlayerPicker)}>
-                            <div style={{ fontWeight: 700 }}>{sp.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HCP: {sp.handicap}</div>
+                            <div style={{ fontWeight: 700 }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem' }}>
+                              <span>HCP: {sp.handicap}</span>
+                              {sp.license_number && <span>· Lic: {sp.license_number}</span>}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button className="btn-icon-sm" onClick={() => toggleFavorite(sp.id)}>
