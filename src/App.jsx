@@ -674,18 +674,10 @@ export default function App() {
           <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={handleExitPlaying}>
             <ChevronLeft size={24} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-            <button disabled={holeIdx === 0} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h - 1); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px 14px', borderRadius: '8px 0 0 8px', minHeight: '44px', opacity: holeIdx === 0 ? 0.3 : 1 }}>
-              <ChevronLeft size={22} />
-            </button>
-            <div style={{ textAlign: 'center', padding: '6px 12px', background: 'rgba(255,255,255,0.08)', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                H{hole.number} · P{hole.par} · HCP {hole.handicap}
-              </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 16px' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              H{hole.number} · P{hole.par} · HCP {hole.handicap}
             </div>
-            <button disabled={holeIdx === config.holes - 1} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h + 1); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px 14px', borderRadius: '0 8px 8px 0', minHeight: '44px', opacity: holeIdx === config.holes - 1 ? 0.3 : 1 }}>
-              <ChevronRight size={22} />
-            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
