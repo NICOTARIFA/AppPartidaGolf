@@ -315,15 +315,6 @@ export default function App() {
       ...s,
       [hole.number]: { ...(s[hole.number] || {}), [pid]: v },
     }));
-
-    if (v > 0) {
-      const pIdx = players.findIndex(p => p.id === pid);
-      if (pIdx >= 0 && pIdx < players.length - 1) {
-        setSelectedPlayerId(players[pIdx + 1].id);
-      } else if (pIdx === players.length - 1 && holeIdx < config.holes - 1) {
-        setHoleIdx(i => i + 1);
-      }
-    }
   };
 
   const toggleFavorite = (pid) => {
@@ -800,11 +791,31 @@ export default function App() {
             );
           })}
 
-          {holeIdx === config.holes - 1 && (
-            <button className="btn btn-primary" style={{ marginTop: 'auto' }} onClick={handleFinishMatch}>
-              <Trophy size={18} /> Finalizar Partida
+          {/* Bottom hole navigation */}
+          <div style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem', background: '#0f172a', flexShrink: 0 }}>
+            <button
+              disabled={holeIdx === 0}
+              onClick={() => setHoleIdx(h => h - 1)}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', background: holeIdx === 0 ? '#1e293b' : 'rgba(255,255,255,0.1)', border: 'none', color: holeIdx === 0 ? '#475569' : 'white', fontSize: '0.9rem', fontWeight: 700, cursor: holeIdx === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+            >
+              <ChevronLeft size={20} /> Hoyo {hole.number - 1 || ''}
             </button>
-          )}
+            {holeIdx === config.holes - 1 ? (
+              <button
+                onClick={handleFinishMatch}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', background: 'var(--primary)', border: 'none', color: 'white', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <Trophy size={20} /> Finalizar
+              </button>
+            ) : (
+              <button
+                onClick={() => setHoleIdx(h => h + 1)}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                Hoyo {hole.number + 1} <ChevronRight size={20} />
+              </button>
+            )}
+          </div>
         </main>
 
         {showQr && matchId && (
