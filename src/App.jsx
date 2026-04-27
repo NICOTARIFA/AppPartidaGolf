@@ -713,6 +713,30 @@ export default function App() {
             </button>
           )}
         </main>
+
+        {showQr && matchId && (
+          <div className="modal-overlay" onClick={() => setShowQr(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>Compartir Partida</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
+                Escanea este código QR para unirte a la partida
+              </p>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', display: 'inline-block' }}>
+                <QRCodeSVG
+                  value={`${window.location.origin}${window.location.pathname}?join=${matchId}`}
+                  size={220}
+                  level="H"
+                />
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                {`${window.location.origin}${window.location.pathname}?join=${matchId}`}
+              </div>
+              <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
