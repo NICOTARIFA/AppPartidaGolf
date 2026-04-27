@@ -435,15 +435,17 @@ export default function App() {
       const mpWin = calcMatchPlayWinner(hs);
       if (mpWin && t[mpWin]) t[mpWin].matchPlay += 1;
 
-      // Sindicato calculation per hole
-      if (config.system === 'Sindicato' && players.length === 3) {
+      // Sindicato calculation per hole (both modes)
+      const isSindicato = config.system === 'Sindicato' || config.system === 'Sindicato Bruto';
+      if (isSindicato && players.length === 3) {
+        const useHandicap = config.system === 'Sindicato'; // net mode
         const holeStableford = players.map(p => {
           const s = hs[p.id] || 0;
-          const hcpStrokes = getHoleHandicapStrokes(p.handicap, course.holes[i - 1].handicap);
+          const hcpStrokes = useHandicap ? getHoleHandicapStrokes(p.handicap, course.holes[i - 1].handicap) : 0;
           return { pid: p.id, pts: s > 0 ? calcStableford(s, course.holes[i - 1].par, hcpStrokes) : 0 };
         });
         // Only calculate if all 3 have scored
-        if (holeStableford.every(x => x.pts >= 0 && (hs[players.find(pl => pl.id === x.pid)?.id] || 0) > 0)) {
+        if (holeStableford.every(x => (hs[players.find(pl => pl.id === x.pid)?.id] || 0) > 0)) {
           const sinPoints = calcSindicatoPoints(holeStableford);
           Object.entries(sinPoints).forEach(([pid, pts]) => {
             if (t[pid]) t[pid].sindicato += pts;
@@ -458,7 +460,7 @@ export default function App() {
     if (config.system === 'Stroke Play') return totals[pid].strokes;
     if (config.system === 'Stableford') return totals[pid].netStableford;
     if (config.system === 'Medal Play') return totals[pid].netStrokes;
-    if (config.system === 'Sindicato') return totals[pid].sindicato;
+    if (config.system === 'Sindicato' || config.system === 'Sindicato Bruto') return totals[pid].sindicato;
     return totals[pid].matchPlay;
   };
 
@@ -467,7 +469,7 @@ export default function App() {
       if (config.system === 'Stroke Play') return (totals[a.id].strokes || Infinity) - (totals[b.id].strokes || Infinity);
       if (config.system === 'Stableford') return totals[b.id].netStableford - totals[a.id].netStableford;
       if (config.system === 'Medal Play') return (totals[a.id].netStrokes || Infinity) - (totals[b.id].netStrokes || Infinity);
-      if (config.system === 'Sindicato') return totals[b.id].sindicato - totals[a.id].sindicato;
+      if (config.system === 'Sindicato' || config.system === 'Sindicato Bruto') return totals[b.id].sindicato - totals[a.id].sindicato;
       return totals[b.id].matchPlay - totals[a.id].matchPlay;
     });
   }, [totals, players, config.system]);
@@ -479,7 +481,7 @@ export default function App() {
     return sortedPlayers[0].id;
   }, [sortedPlayers, config.system, totals]);
 
-  const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : config.system === 'Sindicato' ? 'Sindicato' : 'Hoyos';
+  const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : (config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? 'Sindicato' : 'Hoyos';
 
 
   const handleFinishMatch = () => {
@@ -596,7 +598,8 @@ export default function App() {
                 <option value="Medal Play">Medal Play (Neto)</option>
                 <option value="Stableford">Stableford (Neto)</option>
                 <option value="Match Play">Match Play</option>
-                <option value="Sindicato">Sindicato (3 Jugadores)</option>
+                <option value="Sindicato">Sindicato con Handicap (3 Jug.)</option>
+                <option value="Sindicato Bruto">Sindicato sin Handicap (3 Jug.)</option>
               </select>
             </div>
           </div>
@@ -826,7 +829,7 @@ export default function App() {
 
                 <div className="player-card-footer">
                   <div>Total: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes === 0 ? 'E' : totals[p.id].strokes - totalPar}</div>
-                  {config.system === 'Sindicato' ? (
+                  {(config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? (
                     <div>Sindicato: {totals[p.id].sindicato} pts</div>
                   ) : (
                     <div>Stableford: {totals[p.id].netStableford} pts</div>
