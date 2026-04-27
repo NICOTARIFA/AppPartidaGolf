@@ -734,35 +734,35 @@ export default function App() {
               className={`score-btn-lg score-btn-eagle ${scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 0 : hole.par - 2)}
             >
-              <span className="score-btn-num">-2</span>
+              <span className="score-btn-num">{hole.par - 2}</span>
               <span className="score-btn-label">Eagle</span>
             </button>
             <button
               className={`score-btn-lg score-btn-birdie ${scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 0 : hole.par - 1)}
             >
-              <span className="score-btn-num">-1</span>
+              <span className="score-btn-num">{hole.par - 1}</span>
               <span className="score-btn-label">Birdie</span>
             </button>
             <button
               className={`score-btn-lg score-btn-par ${scores[hole.number]?.[selectedPlayerId] === hole.par ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par ? 0 : hole.par)}
             >
-              <span className="score-btn-num">E</span>
+              <span className="score-btn-num">{hole.par}</span>
               <span className="score-btn-label">Par</span>
             </button>
             <button
               className={`score-btn-lg score-btn-bogey ${scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 0 : hole.par + 1)}
             >
-              <span className="score-btn-num">+1</span>
+              <span className="score-btn-num">{hole.par + 1}</span>
               <span className="score-btn-label">Bogey</span>
             </button>
             <button
               className={`score-btn-lg score-btn-double ${scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 0 : hole.par + 2)}
             >
-              <span className="score-btn-num">+2</span>
+              <span className="score-btn-num">{hole.par + 2}</span>
               <span className="score-btn-label">D. Bogey</span>
             </button>
             <button
@@ -770,7 +770,7 @@ export default function App() {
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 3 ? 0 : hole.par + 3)}
               style={{ background: '#7c2d12' }}
             >
-              <span className="score-btn-num">+3</span>
+              <span className="score-btn-num">{hole.par + 3}</span>
               <span className="score-btn-label">T. Bogey</span>
             </button>
             <button
@@ -778,8 +778,8 @@ export default function App() {
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 4 ? 0 : hole.par + 4)}
               style={{ background: '#451a03' }}
             >
-              <span className="score-btn-num">+4</span>
-              <span className="score-btn-label">+4</span>
+              <span className="score-btn-num">{hole.par + 4}</span>
+              <span className="score-btn-label">+{hole.par + 4}</span>
             </button>
           </div>
 
