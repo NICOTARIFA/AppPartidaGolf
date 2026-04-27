@@ -129,6 +129,8 @@ export default function App() {
   const playersRef = useRef(players);
   const configRef = useRef(config);
   const lastPushTime = useRef(0);
+  const longPressTimerRef = useRef(null);
+  const isLongPressRef = useRef(false);
 
   useEffect(() => { scoresRef.current = scores; }, [scores]);
   useEffect(() => { playersRef.current = players; }, [players]);
@@ -680,33 +682,32 @@ export default function App() {
             const diff = currentScore > 0 ? currentScore - hole.par : 0;
             const displayDiff = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
 
-            let longPressTimer = null;
-            let isLongPress = false;
-
-            const handleTouchStart = () => {
-              isLongPress = false;
-              longPressTimer = setTimeout(() => {
-                isLongPress = true;
+            const handleTouchStart = (e) => {
+              isLongPressRef.current = false;
+              longPressTimerRef.current = setTimeout(() => {
+                isLongPressRef.current = true;
                 if (currentScore > 0) setScore(p.id, currentScore - 1);
               }, 500);
             };
 
             const handleTouchEnd = (e) => {
-              clearTimeout(longPressTimer);
-              if (!isLongPress) {
-                // Normal tap = +1 stroke (auto-par on first tap)
-                const newScore = currentScore === 0 ? hole.par : currentScore + 1;
-                if (newScore <= 15) setScore(p.id, newScore);
+              clearTimeout(longPressTimerRef.current);
+              if (isLongPressRef.current) {
+                e.preventDefault(); // Prevent click from firing
+                return;
               }
+              // Normal tap = +1 stroke (auto-par on first tap)
+              const newScore = currentScore === 0 ? hole.par : currentScore + 1;
+              if (newScore <= 15) setScore(p.id, newScore);
             };
 
             const handleTouchMove = () => {
-              clearTimeout(longPressTimer);
+              clearTimeout(longPressTimerRef.current);
             };
 
             const handleClick = (e) => {
               // Desktop fallback: only if not triggered by touch
-              if (e.detail > 0 && !('ontouchstart' in window)) {
+              if (!('ontouchstart' in window)) {
                 const newScore = currentScore === 0 ? hole.par : currentScore + 1;
                 if (newScore <= 15) setScore(p.id, newScore);
               }
