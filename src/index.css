@@ -760,6 +760,41 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Handicap Slider */
+.hcp-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  outline: none;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.hcp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.hcp-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
 /* ===== SCORE NUMBER BUTTONS ===== */
 .score-buttons {
   display: grid;

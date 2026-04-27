@@ -500,9 +500,20 @@ export default function App() {
               {players.map((p, i) => (
                 <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
-                    <input type="number" className="input" value={p.handicap} onChange={e => setPlayerHandicap(p.id, e.target.value)} placeholder="Hcp" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '20px', textAlign: 'right' }}>{p.handicap}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="36" 
+                      step="1" 
+                      className="hcp-slider"
+                      value={p.handicap} 
+                      onChange={e => setPlayerHandicap(p.id, e.target.value)} 
+                    />
                   </div>
                   {players.length > 1 && (
                     <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none', alignSelf: 'flex-end', marginBottom: '4px' }} onClick={() => removePlayer(p.id)}>
