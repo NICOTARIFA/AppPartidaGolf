@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3 } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -147,7 +147,8 @@ export default function App() {
     const raw = localStorage.getItem('partidagolf_saved_players');
     return raw ? JSON.parse(raw) : [];
   });
-  const [playerFilter, setPlayerFilter] = useState('all'); // 'all' or 'fav'
+  const [playerFilter, setPlayerFilter] = useState('all');
+  const [editingPlayer, setEditingPlayer] = useState(null); // player id being edited
 
   // Refs to avoid stale closures in real-time subscriptions
   const scoresRef = useRef(scores);
@@ -161,7 +162,7 @@ export default function App() {
   useEffect(() => { playersRef.current = players; }, [players]);
   useEffect(() => { configRef.current = config; }, [config]);
 
-  // Load saved players from Supabase on mount
+  // Load saved players from Supabase on mount (and migrate old non-UUID IDs)
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
@@ -178,6 +179,28 @@ export default function App() {
           }));
           setSavedPlayers(mapped);
           localStorage.setItem('partidagolf_saved_players', JSON.stringify(mapped));
+        } else {
+          // No data in Supabase - migrate localStorage players to Supabase
+          const local = JSON.parse(localStorage.getItem('partidagolf_saved_players') || '[]');
+          if (local.length > 0) {
+            const migrated = [];
+            for (const p of local) {
+              const newId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+              const dbRow = {
+                id: newId,
+                name: p.name || 'Sin nombre',
+                surname: p.surname || '',
+                license_number: p.license_number || '',
+                handicap: p.handicap || 0,
+                photo: p.photo || null,
+                is_favorite: p.isFavorite || false,
+              };
+              await supabase.from('players').insert([dbRow]);
+              migrated.push({ ...dbRow, isFavorite: dbRow.is_favorite });
+            }
+            setSavedPlayers(migrated);
+            localStorage.setItem('partidagolf_saved_players', JSON.stringify(migrated));
+          }
         }
       } catch (e) {
         console.warn('No se pudo cargar jugadores de Supabase, usando localStorage', e);
@@ -324,6 +347,8 @@ export default function App() {
   const removePlayer = (id) => setPlayers(players.filter(p => p.id !== id));
   const renamePlayer = (id, name) => setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
   const setPlayerHandicap = (id, handicap) => setPlayers(players.map(p => (p.id === id ? { ...p, handicap: parseInt(handicap) || 0 } : p)));
+  const setPlayerSurname = (id, surname) => setPlayers(players.map(p => (p.id === id ? { ...p, surname } : p)));
+  const setPlayerLicense = (id, license_number) => setPlayers(players.map(p => (p.id === id ? { ...p, license_number } : p)));
 
   const setPlayerPhoto = (id, file) => {
     if (!file) return;
@@ -698,41 +723,53 @@ export default function App() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {players.map((p, i) => (
-                <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {/* Photo avatar */}
-                  <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
-                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)' }}>
-                      {p.photo ? (
-                        <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <Camera size={18} color="#94a3b8" />
-                      )}
+                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {/* Photo avatar */}
+                    <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)' }}>
+                        {p.photo ? (
+                          <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Camera size={18} color="#94a3b8" />
+                        )}
+                      </div>
+                    </label>
+                    <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Nombre`} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.5 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '20px', textAlign: 'right' }}>{p.handicap}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="36"
+                        step="1"
+                        className="hcp-slider"
+                        value={p.handicap}
+                        onChange={e => setPlayerHandicap(p.id, e.target.value)}
+                      />
                     </div>
-                  </label>
-                  <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.5 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '20px', textAlign: 'right' }}>{p.handicap}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="36"
-                      step="1"
-                      className="hcp-slider"
-                      value={p.handicap}
-                      onChange={e => setPlayerHandicap(p.id, e.target.value)}
-                    />
-                  </div>
-                  <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
-                    <Users size={18} />
-                  </button>
-                  {players.length > 1 && (
-                    <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none', alignSelf: 'flex-end', marginBottom: '4px' }} onClick={() => removePlayer(p.id)}>
-                      <Minus size={18} />
+                    <button className="btn-icon" style={{ background: editingPlayer === p.id ? 'var(--primary)' : '#f1f5f9', color: editingPlayer === p.id ? 'white' : 'var(--primary)' }} onClick={() => setEditingPlayer(editingPlayer === p.id ? null : p.id)}>
+                      <Edit3 size={18} />
                     </button>
+                    <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
+                      <Users size={18} />
+                    </button>
+                    {players.length > 1 && (
+                      <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => removePlayer(p.id)}>
+                        <Minus size={18} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Expanded profile fields */}
+                  {editingPlayer === p.id && (
+                    <div style={{ display: 'flex', gap: '0.5rem', paddingLeft: '52px' }}>
+                      <input className="input" style={{ flex: 1 }} value={p.surname || ''} onChange={e => setPlayerSurname(p.id, e.target.value)} placeholder="Apellidos" />
+                      <input className="input" style={{ flex: 1 }} value={p.license_number || ''} onChange={e => setPlayerLicense(p.id, e.target.value)} placeholder="Nº Licencia" />
+                    </div>
                   )}
                 </div>
               ))}
