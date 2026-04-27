@@ -1156,22 +1156,25 @@ body {
   color: #152538;
 }
 
-.score-grid-large {
-  display: flex;
-  overflow-x: auto;
+.score-marking-bar {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
   gap: 0.5rem;
   padding: 1rem;
   background: #f8fafc;
-  scrollbar-width: none; /* Hide scrollbar for cleaner look */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
 }
 
-.score-grid-large::-webkit-scrollbar {
+.score-marking-bar::-webkit-scrollbar {
   display: none;
 }
 
 .score-btn-lg {
-  flex: 0 0 calc(20% - 0.5rem); /* Show about 5 buttons if space allows, or scroll */
-  min-width: 80px;
+  flex: 0 0 100px !important;
+  min-width: 100px !important;
   border-radius: 0.75rem;
   padding: 1.1rem 0;
   color: white;
@@ -1207,8 +1210,7 @@ body {
 
 .score-btn-par {
   background: #1e293b;
-  grid-column: span 2;
-  padding: 1.3rem 0;
+  padding: 1.1rem 0;
 }
 
 .score-btn-bogey {

@@ -729,7 +729,7 @@ export default function App() {
           </div>
 
           {/* Score Input */}
-          <div className="score-grid-large">
+          <div className="score-marking-bar">
             <button
               className={`score-btn-lg score-btn-eagle ${scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 'selected' : ''}`}
               onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 0 : hole.par - 2)}
