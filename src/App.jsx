@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Upload, Share2, Link } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
@@ -116,8 +116,17 @@ export default function App() {
   const [selectedPlayerId, setSelectedPlayerId] = useState(1);
   const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [showQr, setShowQr] = useState(false);
+
+  // Refs to avoid stale closures in real-time subscriptions
+  const scoresRef = useRef(scores);
+  const playersRef = useRef(players);
+  const configRef = useRef(config);
+  const lastPushTime = useRef(0);
+
+  useEffect(() => { scoresRef.current = scores; }, [scores]);
+  useEffect(() => { playersRef.current = players; }, [players]);
+  useEffect(() => { configRef.current = config; }, [config]);
 
   // Ensure selectedPlayerId is valid
   useEffect(() => {
@@ -158,16 +167,20 @@ export default function App() {
         { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
         (payload) => {
           if (payload.new) {
-            // Only update if the local state is different to avoid infinite loops
-            // Using a simple comparison for scores and players
-            if (JSON.stringify(payload.new.scores) !== JSON.stringify(scores)) {
-              setScores(payload.new.scores);
-            }
-            if (JSON.stringify(payload.new.players) !== JSON.stringify(players)) {
-              setPlayers(payload.new.players);
-            }
-            if (JSON.stringify(payload.new.config) !== JSON.stringify(config)) {
-              setConfig(payload.new.config);
+            // Only update if the server has a newer version than our last push
+            // and the data is actually different
+            const serverUpdatedAt = new Date(payload.new.updated_at).getTime();
+            
+            if (serverUpdatedAt > lastPushTime.current) {
+              if (JSON.stringify(payload.new.scores) !== JSON.stringify(scoresRef.current)) {
+                setScores(payload.new.scores);
+              }
+              if (JSON.stringify(payload.new.players) !== JSON.stringify(playersRef.current)) {
+                setPlayers(payload.new.players);
+              }
+              if (JSON.stringify(payload.new.config) !== JSON.stringify(configRef.current)) {
+                setConfig(payload.new.config);
+              }
             }
           }
         }
@@ -181,18 +194,25 @@ export default function App() {
 
   // Push changes to Supabase
   useEffect(() => {
-    if (!matchId || isSyncing) return;
+    if (!matchId) return;
 
     const pushChanges = async () => {
-      setIsSyncing(true);
+      // Don't push if we just received an update from the server
+      const now = Date.now();
+      lastPushTime.current = now;
+      
       await supabase
         .from('matches')
-        .update({ config, players, scores, updated_at: new Date() })
+        .update({ 
+          config: configRef.current, 
+          players: playersRef.current, 
+          scores: scoresRef.current, 
+          updated_at: new Date(now).toISOString() 
+        })
         .eq('id', matchId);
-      setIsSyncing(false);
     };
 
-    const timer = setTimeout(pushChanges, 1000); // Debounce sync
+    const timer = setTimeout(pushChanges, 1500); // Slightly longer debounce to avoid collisions
     return () => clearTimeout(timer);
   }, [config, players, scores, matchId]);
 
