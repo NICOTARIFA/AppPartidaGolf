@@ -572,7 +572,7 @@ export default function App() {
                 <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   {/* Photo avatar */}
                   <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
                     <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)' }}>
                       {p.photo ? (
                         <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
