@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2 } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -112,11 +112,14 @@ export default function App() {
     { id: 3, name: 'Jugador 3', handicap: 0 },
     { id: 4, name: 'Jugador 4', handicap: 0 }
   ]);
-  const [holeIdx, setHoleIdx] = useState(0);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(1);
-  const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
   const [showQr, setShowQr] = useState(false);
+  const [showPlayerPicker, setShowPlayerPicker] = useState(false);
+  const [savedPlayers, setSavedPlayers] = useState(() => {
+    const raw = localStorage.getItem('partidagolf_saved_players');
+    return raw ? JSON.parse(raw) : [];
+  });
+  const [playerFilter, setPlayerFilter] = useState('all'); // 'all' or 'fav'
 
   // Refs to avoid stale closures in real-time subscriptions
   const scoresRef = useRef(scores);
@@ -127,6 +130,10 @@ export default function App() {
   useEffect(() => { scoresRef.current = scores; }, [scores]);
   useEffect(() => { playersRef.current = players; }, [players]);
   useEffect(() => { configRef.current = config; }, [config]);
+
+  useEffect(() => {
+    localStorage.setItem('partidagolf_saved_players', JSON.stringify(savedPlayers));
+  }, [savedPlayers]);
 
   // Ensure selectedPlayerId is valid
   useEffect(() => {
@@ -283,9 +290,41 @@ export default function App() {
     }
   };
 
+    }
+  };
+
+  const toggleFavorite = (pid) => {
+    setSavedPlayers(prev => prev.map(p => p.id === pid ? { ...p, isFavorite: !p.isFavorite } : p));
+  };
+
+  const deleteSavedPlayer = (pid) => {
+    setSavedPlayers(prev => prev.filter(p => p.id !== pid));
+  };
+
+  const selectSavedPlayer = (savedP, slotIndex) => {
+    setPlayers(prev => {
+      const newPlayers = [...prev];
+      newPlayers[slotIndex] = { ...newPlayers[slotIndex], name: savedP.name, handicap: savedP.handicap };
+      return newPlayers;
+    });
+    setShowPlayerPicker(false);
+  };
+
   const startNewMatch = async (online = false) => {
     setScores({});
     setHoleIdx(0);
+
+    // Save current players to history if not exists
+    setSavedPlayers(prev => {
+      let updated = [...prev];
+      players.forEach(p => {
+        if (p.name && !updated.find(up => up.name.toLowerCase() === p.name.toLowerCase())) {
+          updated.push({ id: Date.now() + Math.random(), name: p.name, handicap: p.handicap, isFavorite: false });
+        }
+      });
+      return updated;
+    });
+
     if (online) {
       const { data, error } = await supabase
         .from('matches')
@@ -515,6 +554,9 @@ export default function App() {
                       onChange={e => setPlayerHandicap(p.id, e.target.value)} 
                     />
                   </div>
+                  <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
+                    <Users size={18} />
+                  </button>
                   {players.length > 1 && (
                     <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none', alignSelf: 'flex-end', marginBottom: '4px' }} onClick={() => removePlayer(p.id)}>
                       <Minus size={18} />
@@ -527,6 +569,45 @@ export default function App() {
               <button className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={addPlayer}><Plus size={18} /> Añadir Jugador</button>
             )}
           </div>
+
+          {showPlayerPicker !== false && (
+            <div className="modal-overlay" onClick={() => setShowPlayerPicker(false)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0 }}>Seleccionar Jugador</h3>
+                  <div className="flex-gap">
+                    <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} onClick={() => setPlayerFilter('all')}>Todos</button>
+                    <button className={`btn-chip ${playerFilter === 'fav' ? 'active' : ''}`} onClick={() => setPlayerFilter('fav')}><Star size={14} /> Favs</button>
+                  </div>
+                </div>
+                <div className="saved-players-list">
+                  {savedPlayers.filter(sp => playerFilter === 'all' || sp.isFavorite).length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay jugadores guardados</div>
+                  ) : (
+                    savedPlayers
+                      .filter(sp => playerFilter === 'all' || sp.isFavorite)
+                      .map(sp => (
+                        <div key={sp.id} className="saved-player-item">
+                          <div style={{ flex: 1 }} onClick={() => selectSavedPlayer(sp, showPlayerPicker)}>
+                            <div style={{ fontWeight: 700 }}>{sp.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HCP: {sp.handicap}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn-icon-sm" onClick={() => toggleFavorite(sp.id)}>
+                              <Star size={16} fill={sp.isFavorite ? "var(--gold)" : "none"} color={sp.isFavorite ? "var(--gold)" : "currentColor"} />
+                            </button>
+                            <button className="btn-icon-sm" onClick={() => deleteSavedPlayer(sp.id)}>
+                              <Trash2 size={16} color="var(--danger)" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+                <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowPlayerPicker(false)}>Cerrar</button>
+              </div>
+            </div>
+          )}
 
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -549,11 +630,10 @@ export default function App() {
         <header className="golf-tracker-header">
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span>Marcador de Partida</span>
-            {matchId && <span style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 400 }}>ID: {matchId.slice(0, 8)}...</span>}
           </div>
           {matchId && (
             <button className="btn-icon" style={{ background: 'transparent', color: 'white' }} onClick={() => setShowQr(true)}>
-              <Share2 size={18} />
+              <QrCode size={22} />
             </button>
           )}
         </header>
@@ -562,12 +642,9 @@ export default function App() {
           <div className="modal-overlay" onClick={() => setShowQr(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <h3 style={{ marginBottom: '1rem', textAlign: 'center' }}>Escanear para unirse</h3>
-              <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-                <QRCodeSVG value={`${window.location.origin}${window.location.pathname}?join=${matchId}`} size={200} />
+               <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+                <QRCodeSVG value={`${window.location.origin}${window.location.pathname}?join=${matchId}`} size={240} />
               </div>
-              <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                ID: {matchId}
-              </p>
               <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
                 Cerrar
               </button>
