@@ -1046,15 +1046,14 @@ body {
 
 .player-card-v2 {
   border-radius: 0.75rem;
-  padding: 0.4rem 0.75rem;
   color: white;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
   box-shadow: 0 4px 6px rgba(0,0,0,0.3);
   transition: transform 0.1s;
   user-select: none;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .player-card-v2:active {
@@ -1072,13 +1071,17 @@ body {
   align-items: center;
   font-size: 0.8rem;
   font-weight: 800;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 
 .player-card-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.1rem 0.5rem;
+  padding: 0.2rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
 .card-gross-score {
@@ -1090,14 +1093,13 @@ body {
 .card-relative-score {
   font-size: 1.5rem;
   font-weight: 800;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .player-card-footer {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid rgba(255,255,255,0.15);
-  padding-top: 0.2rem;
+  padding: 0.3rem 0.75rem;
   font-size: 0.7rem;
   font-weight: 600;
   opacity: 0.85;
