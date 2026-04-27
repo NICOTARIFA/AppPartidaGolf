@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Upload, Share2, Link } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2 } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -320,27 +320,6 @@ export default function App() {
     }
   };
 
-  const importFromJson = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (data.config && data.players && data.scores) {
-          setConfig(data.config);
-          setPlayers(data.players);
-          setScores(data.scores);
-          if (data.course) setCourse(data.course);
-          alert("Partida cargada correctamente.");
-        }
-      } catch (err) {
-        alert("Error al cargar el archivo JSON.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
 
   // === Computed totals ===
   const totals = useMemo(() => {
@@ -391,16 +370,6 @@ export default function App() {
 
   const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : 'Hoyos';
 
-  const exportToJson = () => {
-    const data = { config, course, players, scores, totals };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `partida-${config.name.replace(/\s+/g, '-').toLowerCase()}-${config.date}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const handleFinishMatch = () => {
     let missing = false;
@@ -548,29 +517,6 @@ export default function App() {
             )}
           </div>
 
-          <div className="card">
-            <h2 className="card-title"><RefreshCcw size={18} /> Importar / Unirse</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div className="form-group">
-                <label>Cargar desde archivo</label>
-                <div style={{ position: 'relative' }}>
-                  <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => document.getElementById('json-import').click()}>
-                    <Upload size={18} /> Cargar JSON
-                  </button>
-                  <input id="json-import" type="file" accept=".json" style={{ display: 'none' }} onChange={importFromJson} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Unirse con ID de partida</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input id="match-id-input" className="input" placeholder="ID de la partida" />
-                  <button className="btn btn-secondary" onClick={() => joinMatch(document.getElementById('match-id-input').value)}>
-                    <Link size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button className="btn btn-primary" onClick={() => startNewMatch(false)}>
