@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Flag, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -107,10 +107,10 @@ export default function App() {
     system: 'Stroke Play',
   });
   const [players, setPlayers] = useState([
-    { id: 1, name: 'Jugador 1', handicap: 0 },
-    { id: 2, name: 'Jugador 2', handicap: 0 },
-    { id: 3, name: 'Jugador 3', handicap: 0 },
-    { id: 4, name: 'Jugador 4', handicap: 0 }
+    { id: 1, name: 'Jugador 1', handicap: 0, photo: null },
+    { id: 2, name: 'Jugador 2', handicap: 0, photo: null },
+    { id: 3, name: 'Jugador 3', handicap: 0, photo: null },
+    { id: 4, name: 'Jugador 4', handicap: 0, photo: null }
   ]);
   const [holeIdx, setHoleIdx] = useState(0);
   const [selectedPlayerId, setSelectedPlayerId] = useState(1);
@@ -274,6 +274,37 @@ export default function App() {
   const renamePlayer = (id, name) => setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
   const setPlayerHandicap = (id, handicap) => setPlayers(players.map(p => (p.id === id ? { ...p, handicap: parseInt(handicap) || 0 } : p)));
 
+  const setPlayerPhoto = (id, file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // Resize the image to a small thumbnail
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 120;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // Crop to square from center
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setPlayers(prev => prev.map(p => (p.id === id ? { ...p, photo: dataUrl } : p)));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleExitPlaying = () => {
+    if (window.confirm('¿Salir de la partida? Se perderán los datos de la partida en curso.')) {
+      setScreen('setup');
+    }
+  };
+
   // === Course hole editing ===
   const setPar = (v) => { const h = [...course.holes]; h[holeIdx] = { ...h[holeIdx], par: Math.max(3, Math.min(6, v)) }; setCourse({ ...course, holes: h }); };
   const setHcp = (v) => { const h = [...course.holes]; h[holeIdx] = { ...h[holeIdx], handicap: Math.max(1, Math.min(18, v)) }; setCourse({ ...course, holes: h }); };
@@ -306,7 +337,7 @@ export default function App() {
   const selectSavedPlayer = (savedP, slotIndex) => {
     setPlayers(prev => {
       const newPlayers = [...prev];
-      newPlayers[slotIndex] = { ...newPlayers[slotIndex], name: savedP.name, handicap: savedP.handicap };
+      newPlayers[slotIndex] = { ...newPlayers[slotIndex], name: savedP.name, handicap: savedP.handicap, photo: savedP.photo || null };
       return newPlayers;
     });
     setShowPlayerPicker(false);
@@ -321,7 +352,7 @@ export default function App() {
       let updated = [...prev];
       players.forEach(p => {
         if (p.name && !updated.find(up => up.name.toLowerCase() === p.name.toLowerCase())) {
-          updated.push({ id: Date.now() + Math.random(), name: p.name, handicap: p.handicap, isFavorite: false });
+          updated.push({ id: Date.now() + Math.random(), name: p.name, handicap: p.handicap, photo: p.photo || null, isFavorite: false });
         }
       });
       return updated;
@@ -486,9 +517,8 @@ export default function App() {
       <div className="app-container fade-in">
         <header className="golf-tracker-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Flag size={22} /> <span>Partida de Golf by NicoSoft</span>
+            <Settings size={22} /> <span>Partida de Golf by NicoSoft</span>
           </div>
-          <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>Configuración</div>
         </header>
         <main className="content-area">
           <div className="card">
@@ -537,9 +567,20 @@ export default function App() {
               <h2 className="card-title" style={{ margin: 0 }}><Users size={18} /> Jugadores</h2>
               <span className="system-badge">{players.length}/4</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {players.map((p, i) => (
                 <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {/* Photo avatar */}
+                  <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
+                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)' }}>
+                      {p.photo ? (
+                        <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Camera size={18} color="#94a3b8" />
+                      )}
+                    </div>
+                  </label>
                   <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Jugador ${i + 1}`} />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.5 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -590,6 +631,11 @@ export default function App() {
                       .filter(sp => playerFilter === 'all' || sp.isFavorite)
                       .map(sp => (
                         <div key={sp.id} className="saved-player-item">
+                          {sp.photo && (
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                              <img src={sp.photo} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                          )}
                           <div style={{ flex: 1 }} onClick={() => selectSavedPlayer(sp, showPlayerPicker)}>
                             <div style={{ fontWeight: 700 }}>{sp.name}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>HCP: {sp.handicap}</div>
@@ -633,32 +679,30 @@ export default function App() {
 
     return (
       <div className="app-container fade-in playing-screen">
-        <header className="golf-tracker-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px' }} onClick={() => setScreen('setup')}>
-              <ChevronLeft size={24} />
+        <header className="golf-tracker-header" style={{ padding: '0.5rem 0.75rem' }}>
+          <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={handleExitPlaying}>
+            <ChevronLeft size={24} />
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+            <button disabled={holeIdx === 0} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h - 1); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px 14px', borderRadius: '8px 0 0 8px', minHeight: '44px', opacity: holeIdx === 0 ? 0.3 : 1 }}>
+              <ChevronLeft size={22} />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <button disabled={holeIdx === 0} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h - 1); }} style={{ background: 'none', border: 'none', color: 'white', padding: '5px' }}>
-                <ChevronLeft size={18} />
-              </button>
-              <div style={{ textAlign: 'center', minWidth: '140px' }}>
-                <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 800 }}>
-                  HOYO: {hole.number} | PAR: {hole.par} | HCP: {hole.handicap}
-                </div>
+            <div style={{ textAlign: 'center', padding: '6px 12px', background: 'rgba(255,255,255,0.08)', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                H{hole.number} · P{hole.par} · HCP {hole.handicap}
               </div>
-              <button disabled={holeIdx === config.holes - 1} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h + 1); }} style={{ background: 'none', border: 'none', color: 'white', padding: '5px' }}>
-                <ChevronRight size={18} />
-              </button>
             </div>
+            <button disabled={holeIdx === config.holes - 1} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h + 1); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '10px 14px', borderRadius: '0 8px 8px 0', minHeight: '44px', opacity: holeIdx === config.holes - 1 ? 0.3 : 1 }}>
+              <ChevronRight size={22} />
+            </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
-              <Trophy size={32} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
+              <Trophy size={26} />
             </button>
             {matchId && (
-              <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setShowQr(true)} title="Compartir QR">
-                <QrCode size={32} />
+              <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setShowQr(true)} title="Compartir QR">
+                <QrCode size={26} />
               </button>
             )}
           </div>
@@ -731,7 +775,13 @@ export default function App() {
               >
                 <div className="player-card-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px', borderRadius: '50%' }}><Users size={14} /></div>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: p.photo ? 'none' : 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                      {p.photo ? (
+                        <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Users size={14} />
+                      )}
+                    </div>
                     <span>{p.name.toUpperCase()}</span>
                   </div>
                   <span>({p.handicap})</span>
