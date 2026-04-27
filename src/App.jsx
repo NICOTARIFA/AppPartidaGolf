@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3 } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3, Search, X } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -148,7 +148,9 @@ export default function App() {
     return raw ? JSON.parse(raw) : [];
   });
   const [playerFilter, setPlayerFilter] = useState('all');
-  const [editingPlayer, setEditingPlayer] = useState(null); // player id being edited
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [showPlayerForm, setShowPlayerForm] = useState(null); // null=closed, 'new'=create, or player object for edit
+  const [playerFormData, setPlayerFormData] = useState({ name: '', surname: '', license_number: '', handicap: 0, photo: null });
 
   // Refs to avoid stale closures in real-time subscriptions
   const scoresRef = useRef(scores);
@@ -343,18 +345,13 @@ export default function App() {
   };
 
   // === Player management ===
-  const addPlayer = () => { if (players.length < 4) setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}`, handicap: 0 }]); };
+  const addPlayer = () => { if (players.length < 4) setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}`, handicap: 0, photo: null }]); };
   const removePlayer = (id) => setPlayers(players.filter(p => p.id !== id));
-  const renamePlayer = (id, name) => setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
-  const setPlayerHandicap = (id, handicap) => setPlayers(players.map(p => (p.id === id ? { ...p, handicap: parseInt(handicap) || 0 } : p)));
-  const setPlayerSurname = (id, surname) => setPlayers(players.map(p => (p.id === id ? { ...p, surname } : p)));
-  const setPlayerLicense = (id, license_number) => setPlayers(players.map(p => (p.id === id ? { ...p, license_number } : p)));
 
-  const setPlayerPhoto = (id, file) => {
+  const handlePhotoFile = (file, callback) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      // Resize the image to a small thumbnail
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -362,17 +359,54 @@ export default function App() {
         canvas.width = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d');
-        // Crop to square from center
         const min = Math.min(img.width, img.height);
         const sx = (img.width - min) / 2;
         const sy = (img.height - min) / 2;
         ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        setPlayers(prev => prev.map(p => (p.id === id ? { ...p, photo: dataUrl } : p)));
+        callback(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  };
+
+  // Open form to create new player
+  const openNewPlayerForm = () => {
+    setPlayerFormData({ name: '', surname: '', license_number: '', handicap: 0, photo: null });
+    setShowPlayerForm('new');
+  };
+
+  // Open form to edit existing saved player
+  const openEditPlayerForm = (sp) => {
+    setPlayerFormData({ name: sp.name, surname: sp.surname || '', license_number: sp.license_number || '', handicap: sp.handicap || 0, photo: sp.photo || null });
+    setShowPlayerForm(sp);
+  };
+
+  // Save player form (create or update) to Supabase
+  const savePlayerForm = async () => {
+    const { name, surname, license_number, handicap, photo } = playerFormData;
+    if (!name.trim()) { alert('El nombre es obligatorio'); return; }
+
+    if (showPlayerForm === 'new') {
+      // Create new
+      const newId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      const dbRow = { id: newId, name: name.trim(), surname, license_number, handicap, photo, is_favorite: false };
+      const { error } = await supabase.from('players').insert([dbRow]);
+      if (error) { console.error('Error creating player', error); alert('Error al guardar: ' + error.message); return; }
+      const newLocal = { id: newId, name: name.trim(), surname, license_number, handicap, photo, isFavorite: false };
+      setSavedPlayers(prev => [...prev, newLocal]);
+    } else {
+      // Update existing
+      const pid = showPlayerForm.id;
+      const { error } = await supabase.from('players').update({
+        name: name.trim(), surname, license_number, handicap, photo, updated_at: new Date().toISOString(),
+      }).eq('id', pid);
+      if (error) { console.error('Error updating player', error); alert('Error al actualizar: ' + error.message); return; }
+      setSavedPlayers(prev => prev.map(p => p.id === pid ? { ...p, name: name.trim(), surname, license_number, handicap, photo } : p));
+      // Also update in active players if they're using this saved player
+      setPlayers(prev => prev.map(p => p.savedPlayerId === pid ? { ...p, name: name.trim(), surname, license_number, handicap, photo } : p));
+    }
+    setShowPlayerForm(null);
   };
 
   const handleExitPlaying = () => {
@@ -431,64 +465,6 @@ export default function App() {
   const startNewMatch = async (online = false) => {
     setScores({});
     setHoleIdx(0);
-
-    // Save current players to history - update existing or add new, sync to Supabase
-    const upsertPromises = [];
-    setSavedPlayers(prev => {
-      let updated = [...prev];
-      players.forEach(p => {
-        if (!p.name) return;
-        const existingIdx = updated.findIndex(up => up.name.toLowerCase() === p.name.toLowerCase());
-        if (existingIdx >= 0) {
-          // Update existing player
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            handicap: p.handicap,
-            photo: p.photo || updated[existingIdx].photo,
-            surname: p.surname || updated[existingIdx].surname || '',
-            license_number: p.license_number || updated[existingIdx].license_number || '',
-          };
-          // Sync update to Supabase
-          const dbPlayer = updated[existingIdx];
-          upsertPromises.push(
-            supabase.from('players').update({
-              handicap: dbPlayer.handicap,
-              photo: dbPlayer.photo,
-              surname: dbPlayer.surname,
-              license_number: dbPlayer.license_number,
-              updated_at: new Date().toISOString(),
-            }).eq('id', dbPlayer.id)
-          );
-        } else {
-          const newId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-          const newPlayer = {
-            id: newId,
-            name: p.name,
-            surname: p.surname || '',
-            license_number: p.license_number || '',
-            handicap: p.handicap,
-            photo: p.photo || null,
-            isFavorite: false,
-          };
-          updated.push(newPlayer);
-          // Insert to Supabase
-          upsertPromises.push(
-            supabase.from('players').insert([{
-              id: newId,
-              name: p.name,
-              surname: p.surname || '',
-              license_number: p.license_number || '',
-              handicap: p.handicap,
-              photo: p.photo || null,
-              is_favorite: false,
-            }])
-          );
-        }
-      });
-      return updated;
-    });
-    // Execute all Supabase operations
-    Promise.all(upsertPromises).catch(e => console.warn('Error syncing players to Supabase', e));
 
     if (online) {
       const { data, error } = await supabase
@@ -721,55 +697,30 @@ export default function App() {
               <h2 className="card-title" style={{ margin: 0 }}><Users size={18} /> Jugadores</h2>
               <span className="system-badge">{players.length}/4</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {players.map((p, i) => (
-                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    {/* Photo avatar */}
-                    <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setPlayerPhoto(p.id, e.target.files[0])} />
-                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)' }}>
-                        {p.photo ? (
-                          <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <Camera size={18} color="#94a3b8" />
-                        )}
-                      </div>
-                    </label>
-                    <input className="input" style={{ flex: 2 }} value={p.name} onChange={e => renamePlayer(p.id, e.target.value)} placeholder={`Nombre`} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.5 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginLeft: '4px' }}>HCP</label>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '20px', textAlign: 'right' }}>{p.handicap}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="36"
-                        step="1"
-                        className="hcp-slider"
-                        value={p.handicap}
-                        onChange={e => setPlayerHandicap(p.id, e.target.value)}
-                      />
-                    </div>
-                    <button className="btn-icon" style={{ background: editingPlayer === p.id ? 'var(--primary)' : '#f1f5f9', color: editingPlayer === p.id ? 'white' : 'var(--primary)' }} onClick={() => setEditingPlayer(editingPlayer === p.id ? null : p.id)}>
-                      <Edit3 size={18} />
-                    </button>
-                    <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
-                      <Users size={18} />
-                    </button>
-                    {players.length > 1 && (
-                      <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => removePlayer(p.id)}>
-                        <Minus size={18} />
-                      </button>
+                <div key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: p.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid var(--primary)', flexShrink: 0 }}>
+                    {p.photo ? (
+                      <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <Users size={16} color="#94a3b8" />
                     )}
                   </div>
-                  {/* Expanded profile fields */}
-                  {editingPlayer === p.id && (
-                    <div style={{ display: 'flex', gap: '0.5rem', paddingLeft: '52px' }}>
-                      <input className="input" style={{ flex: 1 }} value={p.surname || ''} onChange={e => setPlayerSurname(p.id, e.target.value)} placeholder="Apellidos" />
-                      <input className="input" style={{ flex: 1 }} value={p.license_number || ''} onChange={e => setPlayerLicense(p.id, e.target.value)} placeholder="Nº Licencia" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}{p.surname ? ` ${p.surname}` : ''}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem' }}>
+                      <span>HCP: {p.handicap}</span>
+                      {p.license_number && <span>· Lic: {p.license_number}</span>}
                     </div>
+                  </div>
+                  <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
+                    <Users size={18} />
+                  </button>
+                  {players.length > 1 && (
+                    <button className="btn-icon" style={{ background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => removePlayer(p.id)}>
+                      <Minus size={18} />
+                    </button>
                   )}
                 </div>
               ))}
@@ -779,23 +730,46 @@ export default function App() {
             )}
           </div>
 
+          {/* Player Picker Modal with Search */}
           {showPlayerPicker !== false && (
-            <div className="modal-overlay" onClick={() => setShowPlayerPicker(false)}>
+            <div className="modal-overlay" onClick={() => { setShowPlayerPicker(false); setPlayerSearch(''); }}>
               <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                <div className="flex-between" style={{ marginBottom: '0.75rem' }}>
                   <h3 style={{ margin: 0 }}>Seleccionar Jugador</h3>
-                  <div className="flex-gap">
-                    <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} onClick={() => setPlayerFilter('all')}>Todos</button>
-                    <button className={`btn-chip ${playerFilter === 'fav' ? 'active' : ''}`} onClick={() => setPlayerFilter('fav')}><Star size={14} /> Favs</button>
-                  </div>
+                  <button className="btn-icon-sm" onClick={() => { setShowPlayerPicker(false); setPlayerSearch(''); }}>
+                    <X size={20} />
+                  </button>
+                </div>
+                {/* Quick Search */}
+                <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    className="input"
+                    style={{ paddingLeft: '34px', width: '100%' }}
+                    placeholder="Buscar por nombre o apellido..."
+                    value={playerSearch}
+                    onChange={e => setPlayerSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {/* Filter chips */}
+                <div className="flex-gap" style={{ marginBottom: '0.5rem' }}>
+                  <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} onClick={() => setPlayerFilter('all')}>Todos</button>
+                  <button className={`btn-chip ${playerFilter === 'fav' ? 'active' : ''}`} onClick={() => setPlayerFilter('fav')}><Star size={14} /> Favs</button>
+                  <button className="btn-chip active" style={{ marginLeft: 'auto', background: 'var(--primary)', color: 'white' }} onClick={openNewPlayerForm}><Plus size={14} /> Nuevo</button>
                 </div>
                 <div className="saved-players-list">
-                  {savedPlayers.filter(sp => playerFilter === 'all' || sp.isFavorite).length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay jugadores guardados</div>
-                  ) : (
-                    savedPlayers
+                  {(() => {
+                    const q = playerSearch.toLowerCase().trim();
+                    const filtered = savedPlayers
                       .filter(sp => playerFilter === 'all' || sp.isFavorite)
-                      .map(sp => (
+                      .filter(sp => !q || sp.name.toLowerCase().includes(q) || (sp.surname || '').toLowerCase().includes(q));
+                    return filtered.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                        {q ? 'Sin resultados' : 'No hay jugadores guardados'}
+                      </div>
+                    ) : (
+                      filtered.map(sp => (
                         <div key={sp.id} className="saved-player-item">
                           {sp.photo ? (
                             <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
@@ -806,16 +780,19 @@ export default function App() {
                               <Users size={16} color="#94a3b8" />
                             </div>
                           )}
-                          <div style={{ flex: 1 }} onClick={() => selectSavedPlayer(sp, showPlayerPicker)}>
+                          <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { selectSavedPlayer(sp, showPlayerPicker); setPlayerSearch(''); }}>
                             <div style={{ fontWeight: 700 }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem' }}>
                               <span>HCP: {sp.handicap}</span>
                               {sp.license_number && <span>· Lic: {sp.license_number}</span>}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
                             <button className="btn-icon-sm" onClick={() => toggleFavorite(sp.id)}>
                               <Star size={16} fill={sp.isFavorite ? "var(--gold)" : "none"} color={sp.isFavorite ? "var(--gold)" : "currentColor"} />
+                            </button>
+                            <button className="btn-icon-sm" onClick={() => openEditPlayerForm(sp)}>
+                              <Edit3 size={16} color="var(--primary)" />
                             </button>
                             <button className="btn-icon-sm" onClick={() => deleteSavedPlayer(sp.id)}>
                               <Trash2 size={16} color="var(--danger)" />
@@ -823,9 +800,57 @@ export default function App() {
                           </div>
                         </div>
                       ))
-                  )}
+                    );
+                  })()}
                 </div>
-                <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowPlayerPicker(false)}>Cerrar</button>
+                <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => { setShowPlayerPicker(false); setPlayerSearch(''); }}>Cerrar</button>
+              </div>
+            </div>
+          )}
+
+          {/* Player Form Modal (Create / Edit) */}
+          {showPlayerForm && (
+            <div className="modal-overlay" onClick={() => setShowPlayerForm(null)}>
+              <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0 }}>{showPlayerForm === 'new' ? 'Nuevo Jugador' : 'Editar Jugador'}</h3>
+                  <button className="btn-icon-sm" onClick={() => setShowPlayerForm(null)}>
+                    <X size={20} />
+                  </button>
+                </div>
+                {/* Photo */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <label style={{ cursor: 'pointer' }}>
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handlePhotoFile(e.target.files[0], (dataUrl) => setPlayerFormData(prev => ({ ...prev, photo: dataUrl })))} />
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: playerFormData.photo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '3px solid var(--primary)' }}>
+                      {playerFormData.photo ? (
+                        <img src={playerFormData.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Camera size={28} color="#94a3b8" />
+                      )}
+                    </div>
+                  </label>
+                </div>
+                {/* Fields */}
+                <div className="form-group">
+                  <label>Nombre *</label>
+                  <input className="input" value={playerFormData.name} onChange={e => setPlayerFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre" autoFocus />
+                </div>
+                <div className="form-group">
+                  <label>Apellidos</label>
+                  <input className="input" value={playerFormData.surname} onChange={e => setPlayerFormData(prev => ({ ...prev, surname: e.target.value }))} placeholder="Apellidos" />
+                </div>
+                <div className="form-group">
+                  <label>Nº Licencia Federativa</label>
+                  <input className="input" value={playerFormData.license_number} onChange={e => setPlayerFormData(prev => ({ ...prev, license_number: e.target.value }))} placeholder="Nº Licencia" />
+                </div>
+                <div className="form-group">
+                  <label>Handicap: <strong style={{ color: 'var(--primary)' }}>{playerFormData.handicap}</strong></label>
+                  <input type="range" min="0" max="54" step="1" className="hcp-slider" value={playerFormData.handicap} onChange={e => setPlayerFormData(prev => ({ ...prev, handicap: parseInt(e.target.value) || 0 }))} />
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={savePlayerForm}>
+                  <Save size={18} /> {showPlayerForm === 'new' ? 'Crear Jugador' : 'Guardar Cambios'}
+                </button>
               </div>
             </div>
           )}
@@ -1090,7 +1115,7 @@ export default function App() {
                 <tbody>
                   {course.holes.slice(0, config.holes).map(h => (
                     <tr key={h.number}>
-                      <td style={{ fontWeight: 600 }}>{h.number}</td>
+                      <td style={{ fontWeight: 800 }}>{h.number}</td>
                       <td>{h.par}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{h.handicap}</td>
                       {players.map(p => {
