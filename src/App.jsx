@@ -633,11 +633,11 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
-              <Trophy size={24} />
+              <Trophy size={32} />
             </button>
             {matchId && (
               <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setShowQr(true)} title="Compartir QR">
-                <QrCode size={24} />
+                <QrCode size={32} />
               </button>
             )}
           </div>
