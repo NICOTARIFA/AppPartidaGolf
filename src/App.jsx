@@ -290,9 +290,6 @@ export default function App() {
     }
   };
 
-    }
-  };
-
   const toggleFavorite = (pid) => {
     setSavedPlayers(prev => prev.map(p => p.id === pid ? { ...p, isFavorite: !p.isFavorite } : p));
   };
