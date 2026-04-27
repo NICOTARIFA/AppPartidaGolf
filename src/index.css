@@ -1157,14 +1157,21 @@ body {
 }
 
 .score-grid-large {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  display: flex;
+  overflow-x: auto;
+  gap: 0.5rem;
   padding: 1rem;
   background: #f8fafc;
+  scrollbar-width: none; /* Hide scrollbar for cleaner look */
+}
+
+.score-grid-large::-webkit-scrollbar {
+  display: none;
 }
 
 .score-btn-lg {
+  flex: 0 0 calc(20% - 0.5rem); /* Show about 5 buttons if space allows, or scroll */
+  min-width: 80px;
   border-radius: 0.75rem;
   padding: 1.1rem 0;
   color: white;

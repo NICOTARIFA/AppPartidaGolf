@@ -765,6 +765,22 @@ export default function App() {
               <span className="score-btn-num">+2</span>
               <span className="score-btn-label">D. Bogey</span>
             </button>
+            <button
+              className={`score-btn-lg score-btn-triple ${scores[hole.number]?.[selectedPlayerId] === hole.par + 3 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 3 ? 0 : hole.par + 3)}
+              style={{ background: '#7c2d12' }}
+            >
+              <span className="score-btn-num">+3</span>
+              <span className="score-btn-label">T. Bogey</span>
+            </button>
+            <button
+              className={`score-btn-lg score-btn-other ${scores[hole.number]?.[selectedPlayerId] === hole.par + 4 ? 'selected' : ''}`}
+              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 4 ? 0 : hole.par + 4)}
+              style={{ background: '#451a03' }}
+            >
+              <span className="score-btn-num">+4</span>
+              <span className="score-btn-label">+4</span>
+            </button>
           </div>
 
           <div className="bottom-action-bar">
