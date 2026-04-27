@@ -4,6 +4,7 @@ import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createClient } from '@supabase/supabase-js';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Supabase configuration
 const SUPABASE_URL = 'https://rulvzxpyeghfmyupnwka.supabase.co';
@@ -116,6 +117,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   // Ensure selectedPlayerId is valid
   useEffect(() => {
@@ -123,6 +125,17 @@ export default function App() {
       setSelectedPlayerId(players[0].id);
     }
   }, [players, selectedPlayerId]);
+
+  // === URL Join Match ===
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get('join');
+    if (joinId) {
+      joinMatch(joinId);
+      // Clean up URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // Reset to player 1 when changing holes
   useEffect(() => {
@@ -562,11 +575,28 @@ export default function App() {
             {matchId && <span style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 400 }}>ID: {matchId.slice(0, 8)}...</span>}
           </div>
           {matchId && (
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white' }} onClick={() => { navigator.clipboard.writeText(matchId); alert("ID copiado al portapapeles"); }}>
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white' }} onClick={() => setShowQr(true)}>
               <Share2 size={18} />
             </button>
           )}
         </header>
+
+        {showQr && (
+          <div className="modal-overlay" onClick={() => setShowQr(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginBottom: '1rem', textAlign: 'center' }}>Escanear para unirse</h3>
+              <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+                <QRCodeSVG value={`${window.location.origin}${window.location.pathname}?join=${matchId}`} size={200} />
+              </div>
+              <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                ID: {matchId}
+              </p>
+              <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
 
         <main className="playing-content">
           {/* Hole navigation */}
