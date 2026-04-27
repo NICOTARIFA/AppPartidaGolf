@@ -609,21 +609,26 @@ export default function App() {
 
           {/* Player Tabs */}
           <div className="player-tabs-container">
-            {players.map(p => (
-              <button
-                key={p.id}
-                className={`player-tab ${selectedPlayerId === p.id ? 'active' : ''}`}
-                onClick={() => setSelectedPlayerId(p.id)}
-              >
-                <div>{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
-                <div className="player-tab-score">
-                  {config.system === 'Stableford' ? `${totals[p.id].netStableford} pts` :
-                    config.system === 'Medal Play' ? `${totals[p.id].netStrokes > 0 ? '+' : ''}${totals[p.id].netStrokes}` :
-                      config.system === 'Stroke Play' ? `${totals[p.id].strokes}` :
-                        `${totals[p.id].matchPlay}`}
-                </div>
-              </button>
-            ))}
+            {players.map(p => {
+              const currentStrokes = scores[hole.number]?.[p.id] || 0;
+              const hcpStrokes = getHoleHandicapStrokes(p.handicap, hole.handicap);
+              const holeStableford = calcStableford(currentStrokes, hole.par, hcpStrokes);
+
+              return (
+                <button
+                  key={p.id}
+                  className={`player-tab ${selectedPlayerId === p.id ? 'active' : ''}`}
+                  onClick={() => setSelectedPlayerId(p.id)}
+                >
+                  <div className="player-tab-name">{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
+                  <div className="player-tab-total">T: {totals[p.id].strokes}</div>
+                  <div className="player-tab-row">
+                    <span>H: {currentStrokes || '-'}</span>
+                    <span>S: {holeStableford}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* Hole Info */}
