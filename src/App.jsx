@@ -338,11 +338,16 @@ export default function App() {
     setScores({});
     setHoleIdx(0);
 
-    // Save current players to history if not exists
+    // Save current players to history - update existing or add new
     setSavedPlayers(prev => {
       let updated = [...prev];
       players.forEach(p => {
-        if (p.name && !updated.find(up => up.name.toLowerCase() === p.name.toLowerCase())) {
+        if (!p.name) return;
+        const existingIdx = updated.findIndex(up => up.name.toLowerCase() === p.name.toLowerCase());
+        if (existingIdx >= 0) {
+          // Update photo and handicap for existing player
+          updated[existingIdx] = { ...updated[existingIdx], handicap: p.handicap, photo: p.photo || updated[existingIdx].photo };
+        } else {
           updated.push({ id: Date.now() + Math.random(), name: p.name, handicap: p.handicap, photo: p.photo || null, isFavorite: false });
         }
       });
@@ -671,12 +676,12 @@ export default function App() {
     return (
       <div className="app-container fade-in playing-screen">
         <header className="golf-tracker-header" style={{ padding: '0.5rem 0.75rem' }}>
-          <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={handleExitPlaying}>
-            <ChevronLeft size={24} />
+          <button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, minHeight: '36px', cursor: 'pointer' }} onClick={handleExitPlaying}>
+            Fin
           </button>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 16px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px 14px' }}>
             <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-              H{hole.number} · P{hole.par} · HCP {hole.handicap}
+              Hoyo: {hole.number} · Par: {hole.par} · Hcp: {hole.handicap}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
