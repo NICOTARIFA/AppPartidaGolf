@@ -1078,22 +1078,9 @@ body {
 
 .player-tab {
   flex: 1;
-  max-width: 120px;
-  min-height: 70px;
-  padding: 0.5rem;
-  border-radius: 0.75rem;
-  background: #ffffff;
-  border: 2px solid #e2e8f0;
-  color: #475569;
-  text-align: center;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-.player-tab {
-  flex: 1;
   max-width: 140px;
-  min-height: 90px;
-  padding: 0.4rem;
+  min-height: 100px;
+  padding: 0.5rem;
   border-radius: 0.75rem;
   background: #ffffff;
   border: 2px solid #e2e8f0;
@@ -1104,7 +1091,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.15rem;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
