@@ -624,6 +624,8 @@ export default function App() {
   }
 
   // ======================== PLAYING ========================
+  const totalPar = course.holes.slice(0, config.holes).reduce((s, h) => s + h.par, 0);
+
   if (screen === 'playing') {
     const hole = course.holes[holeIdx];
 
@@ -677,20 +679,20 @@ export default function App() {
             };
 
             return (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 className={`player-card-v2 player-${idx % 4}`}
                 onClick={handleCardClick}
                 onContextMenu={handleCardRightClick}
               >
                 <div className="player-card-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px', borderRadius: '50%' }}><User size={14} /></div>
+                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px', borderRadius: '50%' }}><Users size={14} /></div>
                     <span>{p.name.toUpperCase()}</span>
                   </div>
                   <span>({p.handicap})</span>
                 </div>
-                
+
                 <div className="player-card-body">
                   <div className="card-gross-score">{currentScore || 'P'}</div>
                   <div className="card-score-dash">-</div>
@@ -704,7 +706,7 @@ export default function App() {
               </div>
             );
           })}
-          
+
           {holeIdx === config.holes - 1 && (
             <button className="btn btn-primary" style={{ marginTop: 'auto' }} onClick={handleFinishMatch}>
               <Trophy size={18} /> Finalizar Partida
@@ -716,7 +718,7 @@ export default function App() {
   }
 
   // ======================== RESULTS ========================
-  const totalPar = course.holes.slice(0, config.holes).reduce((s, h) => s + h.par, 0);
+  // totalPar already computed above
   return (
     <div className="app-container fade-in">
       <header className="golf-tracker-header">
@@ -724,7 +726,7 @@ export default function App() {
           <Trophy size={22} /> <span>Resultados</span>
         </div>
         <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
-          <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
+          <ChevronLeft size={18} /> Volver (Hoyo {holeIdx + 1})
         </button>
       </header>
       <main className="content-area">
