@@ -629,13 +629,18 @@ export default function App() {
       <div className="app-container fade-in playing-screen">
         <header className="golf-tracker-header">
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span>Marcador de Partida</span>
+            <span style={{ fontSize: '1rem' }}>Marcador</span>
           </div>
-          {matchId && (
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white' }} onClick={() => setShowQr(true)}>
-              <QrCode size={22} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
+              <Trophy size={24} />
             </button>
-          )}
+            {matchId && (
+              <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setShowQr(true)} title="Compartir QR">
+                <QrCode size={24} />
+              </button>
+            )}
+          </div>
         </header>
 
         {showQr && (
@@ -794,12 +799,6 @@ export default function App() {
             ))}
           </div>
 
-          <div className="bottom-action-bar">
-            <button className="btn-outline" onClick={() => setScreen('results')}>
-              Ver clasificación total
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-            </button>
-          </div>
 
           {holeIdx === config.holes - 1 && (
             <div style={{ padding: '0 1rem 1rem' }}>
