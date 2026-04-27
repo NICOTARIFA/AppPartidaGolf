@@ -792,17 +792,22 @@ export default function App() {
                       })}
                     </tr>
                   ))}
-                  <tr className="total-row">
-                    <td>Total</td><td>{totalPar}</td><td></td>
+                  <tr className="total-row" style={{ borderTop: '2px solid var(--primary)' }}>
+                    <td colSpan="3">TOTAL BRUTO</td>
                     {players.map(p => (
-                      <td key={p.id} style={{ color: 'var(--primary)' }}>
-                        <div style={{ fontWeight: 700 }}>{getDisplayScore(p.id)}</div>
-                        {config.system !== 'Match Play' && config.system !== 'Stroke Play' && (
-                          <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>
-                            B: {config.system === 'Stableford' ? totals[p.id].stableford : totals[p.id].strokes}
-                          </div>
-                        )}
-                      </td>
+                      <td key={p.id} style={{ fontWeight: 800 }}>{totals[p.id].strokes}</td>
+                    ))}
+                  </tr>
+                  <tr className="total-row">
+                    <td colSpan="3">TOTAL NETO</td>
+                    {players.map(p => (
+                      <td key={p.id} style={{ fontWeight: 800 }}>{totals[p.id].netStrokes}</td>
+                    ))}
+                  </tr>
+                  <tr className="total-row">
+                    <td colSpan="3">TOTAL STABLEFORD</td>
+                    {players.map(p => (
+                      <td key={p.id} style={{ fontWeight: 800, color: 'var(--primary)' }}>{totals[p.id].netStableford}</td>
                     ))}
                   </tr>
                 </tbody>
