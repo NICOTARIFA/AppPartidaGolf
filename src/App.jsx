@@ -818,11 +818,10 @@ export default function App() {
       <header className="golf-tracker-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Trophy size={22} /> <span>Resultados</span>
-          <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
-            <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
-          </button>
         </div>
-        <div style={{ fontSize: '0.875rem', fontWeight: 500, opacity: 0.9 }}>{config.name} · {config.date}</div>
+        <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
+          <ChevronLeft size={18} /> Volver al Juego (Hoyo {holeIdx + 1})
+        </button>
       </header>
       <main className="content-area">
         <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: '#f8fafc' }}>
