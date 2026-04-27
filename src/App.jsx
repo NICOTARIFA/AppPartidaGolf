@@ -625,11 +625,28 @@ export default function App() {
 
   // ======================== PLAYING ========================
   if (screen === 'playing') {
+    const hole = course.holes[holeIdx];
+
     return (
       <div className="app-container fade-in playing-screen">
         <header className="golf-tracker-header">
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '1rem' }}>Marcador</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px' }} onClick={() => setScreen('setup')}>
+              <ChevronLeft size={24} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <button disabled={holeIdx === 0} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h - 1); }} style={{ background: 'none', border: 'none', color: 'white', padding: '5px' }}>
+                <ChevronLeft size={18} />
+              </button>
+              <div style={{ textAlign: 'center', minWidth: '140px' }}>
+                <div style={{ fontSize: '0.75rem', opacity: 0.9, fontWeight: 800 }}>
+                  HOYO: {hole.number} | PAR: {hole.par} | HCP: {hole.handicap}
+                </div>
+              </div>
+              <button disabled={holeIdx === config.holes - 1} onClick={(e) => { e.stopPropagation(); setHoleIdx(h => h + 1); }} style={{ background: 'none', border: 'none', color: 'white', padding: '5px' }}>
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
@@ -643,82 +660,20 @@ export default function App() {
           </div>
         </header>
 
-        {showQr && (
-          <div className="modal-overlay" onClick={() => setShowQr(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h3 style={{ marginBottom: '1rem', textAlign: 'center' }}>Escanear para unirse</h3>
-              <div style={{ background: 'white', padding: '1rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-                <QRCodeSVG value={`${window.location.origin}${window.location.pathname}?join=${matchId}`} size={240} />
-              </div>
-              <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        )}
-
-        <main className="playing-content">
-          {/* Hole navigation */}
-          <div className="hole-pills-container">
-            {config.holes === 18 ? (
-              <>
-                <div className="hole-pills-row">
-                  {course.holes.slice(0, 9).map((h, i) => (
-                    <button
-                      key={h.number}
-                      className={`hole-pill ${holeIdx === i ? 'active' : ''}`}
-                      onClick={() => setHoleIdx(i)}
-                    >
-                      {h.number}
-                    </button>
-                  ))}
-                </div>
-                <div className="hole-pills-row">
-                  {course.holes.slice(9, 18).map((h, i) => (
-                    <button
-                      key={h.number}
-                      className={`hole-pill ${holeIdx === i + 9 ? 'active' : ''}`}
-                      onClick={() => setHoleIdx(i + 9)}
-                    >
-                      {h.number}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="hole-pills-row">
-                {course.holes.slice(0, 9).map((h, i) => (
-                  <button
-                    key={h.number}
-                    className={`hole-pill ${holeIdx === i ? 'active' : ''}`}
-                    onClick={() => setHoleIdx(i)}
-                  >
-                    {h.number}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
         <main className="player-dashboard">
           {players.map((p, idx) => {
             const currentScore = scores[hole.number]?.[p.id] || 0;
             const diff = currentScore > 0 ? currentScore - hole.par : 0;
             const displayDiff = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
-            const stableford = currentScore > 0 ? calcStableford(currentScore, hole.par, getHoleHandicapStrokes(p.handicap, hole.handicap)) : 0;
 
-            const handleCardClick = (e) => {
-              // Simple tap = +1 (or set to par if 0)
+            const handleCardClick = () => {
               const newScore = currentScore === 0 ? hole.par : currentScore + 1;
               if (newScore <= 15) setScore(p.id, newScore);
             };
 
             const handleCardRightClick = (e) => {
               e.preventDefault();
-              // Right click / Long press simulation = -1
-              if (currentScore > 0) {
-                setScore(p.id, currentScore - 1);
-              }
+              if (currentScore > 0) setScore(p.id, currentScore - 1);
             };
 
             return (
@@ -743,12 +698,18 @@ export default function App() {
                 </div>
 
                 <div className="player-card-footer">
-                  <div>TOTAL: {totals[p.id].strokes > 0 ? (totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes - totalPar) : '0'}</div>
+                  <div>TOTAL: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes - totalPar}</div>
                   <div>STABLEFORD: {totals[p.id].netStableford} PTS</div>
                 </div>
               </div>
             );
           })}
+          
+          {holeIdx === config.holes - 1 && (
+            <button className="btn btn-primary" style={{ marginTop: 'auto' }} onClick={handleFinishMatch}>
+              <Trophy size={18} /> Finalizar Partida
+            </button>
+          )}
         </main>
       </div>
     );
