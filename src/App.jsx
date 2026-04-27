@@ -746,9 +746,6 @@ export default function App() {
   return (
     <div className="app-container fade-in">
       <header className="golf-tracker-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Trophy size={22} /> <span>Resultados</span>
-        </div>
         <button className="btn btn-secondary" onClick={() => setScreen('playing')}>
           <ChevronLeft size={18} /> Volver (Hoyo {holeIdx + 1})
         </button>
