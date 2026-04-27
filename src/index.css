@@ -1009,19 +1009,103 @@ body {
 }
 
 .golf-tracker-header {
-  background: #1e6b4e;
-  padding: 1rem 1.25rem;
+  background: #0f172a; /* Dark OLED style */
+  padding: 0.75rem 1rem;
   color: white;
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  font-weight: 700;
-  font-size: 1.125rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.hole-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #1e293b;
+  color: white;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.player-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #0f172a; /* Dark background for OLED contrast */
+  flex: 1;
+  overflow-y: auto;
+}
+
+.player-card-v2 {
+  border-radius: 1rem;
+  padding: 1rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  transition: transform 0.1s;
+  user-select: none;
+  cursor: pointer;
+}
+
+.player-card-v2:active {
+  transform: scale(0.98);
+}
+
+.player-card-v2.player-0 { background: linear-gradient(135deg, #166534 0%, #14532d 100%); border: 1px solid #22c55e; }
+.player-card-v2.player-1 { background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); border: 1px solid #3b82f6; }
+.player-card-v2.player-2 { background: linear-gradient(135deg, #9a3412 0%, #7c2d12 100%); border: 1px solid #f97316; }
+.player-card-v2.player-3 { background: linear-gradient(135deg, #374151 0%, #1f2937 100%); border: 1px solid #94a3b8; }
+
+.player-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.player-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 0.5rem 0;
+}
+
+.card-gross-score {
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.card-score-dash {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.card-relative-score {
+  font-size: 2.5rem;
+  font-weight: 800;
+}
+
+.player-card-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
 }
 
 .playing-screen .playing-content {

@@ -700,114 +700,55 @@ export default function App() {
             )}
           </div>
 
-          {/* Player Tabs */}
-          <div className="player-tabs-container">
-            {players.map(p => {
-              const currentStrokes = scores[hole.number]?.[p.id] || 0;
-              const hcpStrokes = getHoleHandicapStrokes(p.handicap, hole.handicap);
-              const holeStableford = calcStableford(currentStrokes, hole.par, hcpStrokes);
+        <main className="player-dashboard">
+          {players.map((p, idx) => {
+            const currentScore = scores[hole.number]?.[p.id] || 0;
+            const diff = currentScore > 0 ? currentScore - hole.par : 0;
+            const displayDiff = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
+            const stableford = currentScore > 0 ? calcStableford(currentScore, hole.par, getHoleHandicapStrokes(p.handicap, hole.handicap)) : 0;
 
-              return (
-                <button
-                  key={p.id}
-                  className={`player-tab ${selectedPlayerId === p.id ? 'active' : ''}`}
-                  onClick={() => setSelectedPlayerId(p.id)}
-                >
-                  <div className="player-tab-name">
-                    {p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}
-                    <span style={{ fontSize: '0.7rem', opacity: 0.8, marginLeft: '0.25rem' }}>(Hcp:{p.handicap})</span>
-                  </div>
-                  <div className="player-tab-total">Total: {totals[p.id].strokes}</div>
-                  <div className="player-tab-row">
-                    <div><span>Golpes: {currentStrokes || '-'}</span></div>
-                    <div><span>Stableford: {holeStableford}</span></div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+            const handleCardClick = (e) => {
+              // Simple tap = +1 (or set to par if 0)
+              const newScore = currentScore === 0 ? hole.par : currentScore + 1;
+              if (newScore <= 15) setScore(p.id, newScore);
+            };
 
-          {/* Hole Info */}
-          <div className="hole-info-bar">
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontWeight: 700 }}>Hoyo {hole.number}</span>
-              <span style={{ fontSize: '0.85rem', color: 'rgba(0, 0, 0, 1)' }}>HCP {hole.handicap}</span>
-            </div>
-            <span>PAR {hole.par}</span>
-          </div>
+            const handleCardRightClick = (e) => {
+              e.preventDefault();
+              // Right click / Long press simulation = -1
+              if (currentScore > 0) {
+                setScore(p.id, currentScore - 1);
+              }
+            };
 
-          {/* Score Input */}
-          <div className="score-marking-bar">
-            <button
-              className={`score-btn-lg score-btn-eagle ${scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 2 ? 0 : hole.par - 2)}
-            >
-              <span className="score-btn-num">{hole.par - 2}</span>
-              <span className="score-btn-label">Eagle</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-birdie ${scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par - 1 ? 0 : hole.par - 1)}
-            >
-              <span className="score-btn-num">{hole.par - 1}</span>
-              <span className="score-btn-label">Birdie</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-par ${scores[hole.number]?.[selectedPlayerId] === hole.par ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par ? 0 : hole.par)}
-            >
-              <span className="score-btn-num">{hole.par}</span>
-              <span className="score-btn-label">Par</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-bogey ${scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 1 ? 0 : hole.par + 1)}
-            >
-              <span className="score-btn-num">{hole.par + 1}</span>
-              <span className="score-btn-label">Bogey</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-double ${scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 2 ? 0 : hole.par + 2)}
-            >
-              <span className="score-btn-num">{hole.par + 2}</span>
-              <span className="score-btn-label">D. Bogey</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-triple ${scores[hole.number]?.[selectedPlayerId] === hole.par + 3 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 3 ? 0 : hole.par + 3)}
-              style={{ background: '#7c2d12' }}
-            >
-              <span className="score-btn-num">{hole.par + 3}</span>
-              <span className="score-btn-label">T. Bogey</span>
-            </button>
-            <button
-              className={`score-btn-lg score-btn-other ${scores[hole.number]?.[selectedPlayerId] === hole.par + 4 ? 'selected' : ''}`}
-              onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + 4 ? 0 : hole.par + 4)}
-              style={{ background: '#451a03' }}
-            >
-              <span className="score-btn-num">{hole.par + 4}</span>
-              <span className="score-btn-label">+{hole.par + 4}</span>
-            </button>
-            {[5, 6, 7, 8].map(plus => (
-              <button
-                key={plus}
-                className={`score-btn-lg score-btn-other ${scores[hole.number]?.[selectedPlayerId] === hole.par + plus ? 'selected' : ''}`}
-                onClick={() => setScore(selectedPlayerId, scores[hole.number]?.[selectedPlayerId] === hole.par + plus ? 0 : hole.par + plus)}
-                style={{ background: '#2d0f02' }}
+            return (
+              <div 
+                key={p.id} 
+                className={`player-card-v2 player-${idx % 4}`}
+                onClick={handleCardClick}
+                onContextMenu={handleCardRightClick}
               >
-                <span className="score-btn-num">{hole.par + plus}</span>
-                <span className="score-btn-label">+{hole.par + plus}</span>
-              </button>
-            ))}
-          </div>
+                <div className="player-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: '4px', borderRadius: '50%' }}><User size={14} /></div>
+                    <span>{p.name.toUpperCase()}</span>
+                  </div>
+                  <span>({p.handicap})</span>
+                </div>
+                
+                <div className="player-card-body">
+                  <div className="card-gross-score">{currentScore || 'P'}</div>
+                  <div className="card-score-dash">-</div>
+                  <div className="card-relative-score">{currentScore > 0 ? displayDiff : 'P'}</div>
+                </div>
 
-
-          {holeIdx === config.holes - 1 && (
-            <div style={{ padding: '0 1rem 1rem' }}>
-              <button className="btn btn-primary" onClick={handleFinishMatch}><Trophy size={18} /> Finalizar Partida</button>
-            </div>
-          )}
+                <div className="player-card-footer">
+                  <div>TOTAL: {totals[p.id].strokes > 0 ? (totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes - totalPar) : '0'}</div>
+                  <div>STABLEFORD: {totals[p.id].netStableford} PTS</div>
+                </div>
+              </div>
+            );
+          })}
         </main>
       </div>
     );
