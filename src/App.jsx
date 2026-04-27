@@ -112,6 +112,9 @@ export default function App() {
     { id: 3, name: 'Jugador 3', handicap: 0 },
     { id: 4, name: 'Jugador 4', handicap: 0 }
   ]);
+  const [holeIdx, setHoleIdx] = useState(0);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(1);
+  const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
   const [showQr, setShowQr] = useState(false);
   const [showPlayerPicker, setShowPlayerPicker] = useState(false);
