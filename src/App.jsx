@@ -740,18 +740,20 @@ export default function App() {
                     <X size={20} />
                   </button>
                 </div>
-                {/* Quick Search */}
-                <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+                <form style={{ position: 'relative', marginBottom: '0.75rem' }} onSubmit={e => e.preventDefault()}>
                   <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                   <input
+                    type="search"
                     className="input"
                     style={{ paddingLeft: '34px', width: '100%' }}
-                    placeholder="Buscar por nombre o apellido..."
+                    placeholder="Buscar..."
                     value={playerSearch}
                     onChange={e => setPlayerSearch(e.target.value)}
-                    autoFocus
+                    autoComplete="off"
+                    enterKeyHint="search"
+                    onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
                   />
-                </div>
+                </form>
                 {/* Filter chips */}
                 <div className="flex-gap" style={{ marginBottom: '0.5rem' }}>
                   <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} onClick={() => setPlayerFilter('all')}>Todos</button>
@@ -780,8 +782,8 @@ export default function App() {
                               <Users size={16} color="#94a3b8" />
                             </div>
                           )}
-                          <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { selectSavedPlayer(sp, showPlayerPicker); setPlayerSearch(''); }}>
-                            <div style={{ fontWeight: 700 }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
+                          <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => { selectSavedPlayer(sp, showPlayerPicker); setPlayerSearch(''); }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem' }}>
                               <span>HCP: {sp.handicap}</span>
                               {sp.license_number && <span>· Lic: {sp.license_number}</span>}
