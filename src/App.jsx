@@ -662,19 +662,59 @@ export default function App() {
           </div>
         </header>
 
-        <main className="player-dashboard">
+        <main className="player-dashboard"
+          onTouchStart={(e) => {
+            const touch = e.touches[0];
+            e.currentTarget._swipeStartY = touch.clientY;
+          }}
+          onTouchEnd={(e) => {
+            const endY = e.changedTouches[0].clientY;
+            const startY = e.currentTarget._swipeStartY || 0;
+            if (startY - endY > 100) { // swipe up > 100px
+              setScreen('results');
+            }
+          }}
+        >
           {players.map((p, idx) => {
             const currentScore = scores[hole.number]?.[p.id] || 0;
             const diff = currentScore > 0 ? currentScore - hole.par : 0;
             const displayDiff = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
 
-            const handleCardClick = () => {
-              const newScore = currentScore === 0 ? hole.par : currentScore + 1;
-              if (newScore <= 15) setScore(p.id, newScore);
+            let longPressTimer = null;
+            let isLongPress = false;
+
+            const handleTouchStart = () => {
+              isLongPress = false;
+              longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                if (currentScore > 0) setScore(p.id, currentScore - 1);
+              }, 500);
             };
 
-            const handleCardRightClick = (e) => {
+            const handleTouchEnd = (e) => {
+              clearTimeout(longPressTimer);
+              if (!isLongPress) {
+                // Normal tap = +1 stroke (auto-par on first tap)
+                const newScore = currentScore === 0 ? hole.par : currentScore + 1;
+                if (newScore <= 15) setScore(p.id, newScore);
+              }
+            };
+
+            const handleTouchMove = () => {
+              clearTimeout(longPressTimer);
+            };
+
+            const handleClick = (e) => {
+              // Desktop fallback: only if not triggered by touch
+              if (e.detail > 0 && !('ontouchstart' in window)) {
+                const newScore = currentScore === 0 ? hole.par : currentScore + 1;
+                if (newScore <= 15) setScore(p.id, newScore);
+              }
+            };
+
+            const handleContextMenu = (e) => {
               e.preventDefault();
+              // Desktop right-click fallback for -1
               if (currentScore > 0) setScore(p.id, currentScore - 1);
             };
 
@@ -682,8 +722,11 @@ export default function App() {
               <div
                 key={p.id}
                 className={`player-card-v2 player-${idx % 4}`}
-                onClick={handleCardClick}
-                onContextMenu={handleCardRightClick}
+                onClick={handleClick}
+                onContextMenu={handleContextMenu}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onTouchMove={handleTouchMove}
               >
                 <div className="player-card-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -695,13 +738,12 @@ export default function App() {
 
                 <div className="player-card-body">
                   <div className="card-gross-score">{currentScore || 'P'}</div>
-                  <div className="card-score-dash">-</div>
                   <div className="card-relative-score">{currentScore > 0 ? displayDiff : 'P'}</div>
                 </div>
 
                 <div className="player-card-footer">
-                  <div>TOTAL: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes - totalPar}</div>
-                  <div>STABLEFORD: {totals[p.id].netStableford} PTS</div>
+                  <div>Total: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes === 0 ? 'E' : totals[p.id].strokes - totalPar}</div>
+                  <div>Stableford: {totals[p.id].netStableford} pts</div>
                 </div>
               </div>
             );

@@ -1077,35 +1077,30 @@ body {
 .player-card-body {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 0;
+  justify-content: space-between;
+  padding: 0.1rem 0.5rem;
 }
 
 .card-gross-score {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 900;
   line-height: 1;
-}
-
-.card-score-dash {
-  font-size: 1rem;
-  opacity: 0.5;
 }
 
 .card-relative-score {
   font-size: 1.5rem;
   font-weight: 800;
+  opacity: 0.85;
 }
 
 .player-card-footer {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  padding-top: 0.15rem;
-  font-size: 0.65rem;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 0.2rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .playing-screen .playing-content {
