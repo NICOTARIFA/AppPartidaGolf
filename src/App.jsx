@@ -713,7 +713,10 @@ export default function App() {
                   className={`player-tab ${selectedPlayerId === p.id ? 'active' : ''}`}
                   onClick={() => setSelectedPlayerId(p.id)}
                 >
-                  <div className="player-tab-name">{p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}</div>
+                  <div className="player-tab-name">
+                    {p.name.length > 5 && p.name.toUpperCase().startsWith('JUGADOR') ? p.name.replace('ugador ', 'UG ') : p.name}
+                    <span style={{ fontSize: '0.7rem', opacity: 0.8, marginLeft: '0.25rem' }}>(Hcp:{p.handicap})</span>
+                  </div>
                   <div className="player-tab-total">Total: {totals[p.id].strokes}</div>
                   <div className="player-tab-row">
                     <div><span>Golpes: {currentStrokes || '-'}</span></div>
@@ -851,8 +854,7 @@ export default function App() {
                   <tr key={p.id} className={i === 0 ? 'leader' : ''}>
                     <td><span className={`pos-badge ${i < 3 ? `pos-${i + 1}` : 'pos-other'}`}>{i + 1}</span></td>
                     <td style={{ fontWeight: i === 0 ? 700 : 400 }}>
-                      {p.name}
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>Hcp: {p.handicap}</div>
+                      {p.name} (Hcp:{p.handicap})
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{getDisplayScore(p.id)}</div>
