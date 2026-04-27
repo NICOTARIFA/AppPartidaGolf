@@ -95,6 +95,31 @@ function calcMatchPlayWinner(holeScores) {
   return winners.length === 1 ? winners[0] : null;
 }
 
+// Sindicato: 3 players, 6 points per hole based on net Stableford
+function calcSindicatoPoints(holeStablefordScores) {
+  // holeStablefordScores = [{ pid, pts }] sorted desc
+  const sorted = [...holeStablefordScores].sort((a, b) => b.pts - a.pts);
+  if (sorted.length !== 3) return {};
+
+  const [a, b, c] = sorted;
+  const result = {};
+
+  if (a.pts === b.pts && b.pts === c.pts) {
+    // All tied: 2-2-2
+    result[a.pid] = 2; result[b.pid] = 2; result[c.pid] = 2;
+  } else if (a.pts === b.pts) {
+    // Tie first: 3-3-0
+    result[a.pid] = 3; result[b.pid] = 3; result[c.pid] = 0;
+  } else if (b.pts === c.pts) {
+    // Tie second: 4-1-1
+    result[a.pid] = 4; result[b.pid] = 1; result[c.pid] = 1;
+  } else {
+    // Clear: 4-2-0
+    result[a.pid] = 4; result[b.pid] = 2; result[c.pid] = 0;
+  }
+  return result;
+}
+
 export default function App() {
   const [screen, setScreen] = useState('setup');
   const [courses, setCourses] = useState(loadCourses);
@@ -392,7 +417,7 @@ export default function App() {
   // === Computed totals ===
   const totals = useMemo(() => {
     const t = {};
-    players.forEach(p => (t[p.id] = { strokes: 0, netStrokes: 0, stableford: 0, netStableford: 0, matchPlay: 0 }));
+    players.forEach(p => (t[p.id] = { strokes: 0, netStrokes: 0, stableford: 0, netStableford: 0, matchPlay: 0, sindicato: 0 }));
     for (let i = 1; i <= config.holes; i++) {
       const hs = scores[i];
       if (!hs) continue;
@@ -409,14 +434,31 @@ export default function App() {
       });
       const mpWin = calcMatchPlayWinner(hs);
       if (mpWin && t[mpWin]) t[mpWin].matchPlay += 1;
+
+      // Sindicato calculation per hole
+      if (config.system === 'Sindicato' && players.length === 3) {
+        const holeStableford = players.map(p => {
+          const s = hs[p.id] || 0;
+          const hcpStrokes = getHoleHandicapStrokes(p.handicap, course.holes[i - 1].handicap);
+          return { pid: p.id, pts: s > 0 ? calcStableford(s, course.holes[i - 1].par, hcpStrokes) : 0 };
+        });
+        // Only calculate if all 3 have scored
+        if (holeStableford.every(x => x.pts >= 0 && (hs[players.find(pl => pl.id === x.pid)?.id] || 0) > 0)) {
+          const sinPoints = calcSindicatoPoints(holeStableford);
+          Object.entries(sinPoints).forEach(([pid, pts]) => {
+            if (t[pid]) t[pid].sindicato += pts;
+          });
+        }
+      }
     }
     return t;
-  }, [scores, players, config.holes, course]);
+  }, [scores, players, config.holes, config.system, course]);
 
   const getDisplayScore = (pid) => {
     if (config.system === 'Stroke Play') return totals[pid].strokes;
     if (config.system === 'Stableford') return totals[pid].netStableford;
     if (config.system === 'Medal Play') return totals[pid].netStrokes;
+    if (config.system === 'Sindicato') return totals[pid].sindicato;
     return totals[pid].matchPlay;
   };
 
@@ -425,6 +467,7 @@ export default function App() {
       if (config.system === 'Stroke Play') return (totals[a.id].strokes || Infinity) - (totals[b.id].strokes || Infinity);
       if (config.system === 'Stableford') return totals[b.id].netStableford - totals[a.id].netStableford;
       if (config.system === 'Medal Play') return (totals[a.id].netStrokes || Infinity) - (totals[b.id].netStrokes || Infinity);
+      if (config.system === 'Sindicato') return totals[b.id].sindicato - totals[a.id].sindicato;
       return totals[b.id].matchPlay - totals[a.id].matchPlay;
     });
   }, [totals, players, config.system]);
@@ -436,7 +479,7 @@ export default function App() {
     return sortedPlayers[0].id;
   }, [sortedPlayers, config.system, totals]);
 
-  const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : 'Hoyos';
+  const scoreLabel = config.system === 'Stroke Play' ? 'Bruto' : config.system === 'Stableford' ? 'Puntos' : config.system === 'Medal Play' ? 'Neto' : config.system === 'Sindicato' ? 'Sindicato' : 'Hoyos';
 
 
   const handleFinishMatch = () => {
@@ -553,6 +596,7 @@ export default function App() {
                 <option value="Medal Play">Medal Play (Neto)</option>
                 <option value="Stableford">Stableford (Neto)</option>
                 <option value="Match Play">Match Play</option>
+                <option value="Sindicato">Sindicato (3 Jugadores)</option>
               </select>
             </div>
           </div>
@@ -782,7 +826,11 @@ export default function App() {
 
                 <div className="player-card-footer">
                   <div>Total: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes === 0 ? 'E' : totals[p.id].strokes - totalPar}</div>
-                  <div>Stableford: {totals[p.id].netStableford} pts</div>
+                  {config.system === 'Sindicato' ? (
+                    <div>Sindicato: {totals[p.id].sindicato} pts</div>
+                  ) : (
+                    <div>Stableford: {totals[p.id].netStableford} pts</div>
+                  )}
                 </div>
               </div>
             );
