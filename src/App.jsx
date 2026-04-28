@@ -130,6 +130,7 @@ export default function App() {
     date: new Date().toISOString().split('T')[0],
     holes: 18,
     system: 'Stroke Play',
+    tees: 'yellow' // 'yellow', 'red', or 'both'
   });
   const [players, setPlayers] = useState([
     { id: 1, name: 'Jugador 1', handicap: 0, photo: null },
@@ -725,6 +726,32 @@ export default function App() {
                 <option value="Sindicato Bruto">Sindicato sin Handicap (3 Jug.)</option>
               </select>
             </div>
+            <div className="form-group" style={{ marginTop: '0.75rem' }}>
+              <label>Barras de Salida</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  className={`btn-chip ${config.tees === 'yellow' ? 'active' : ''}`} 
+                  onClick={() => setConfig({ ...config, tees: 'yellow' })} 
+                  style={{ flex: 1, justifyContent: 'center', background: config.tees === 'yellow' ? '#facc15' : 'transparent', color: config.tees === 'yellow' ? '#854d0e' : 'inherit', border: config.tees === 'yellow' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
+                >
+                  Amarillas
+                </button>
+                <button 
+                  className={`btn-chip ${config.tees === 'red' ? 'active' : ''}`} 
+                  onClick={() => setConfig({ ...config, tees: 'red' })} 
+                  style={{ flex: 1, justifyContent: 'center', background: config.tees === 'red' ? '#ef4444' : 'transparent', color: config.tees === 'red' ? 'white' : 'inherit', border: config.tees === 'red' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
+                >
+                  Rojas
+                </button>
+                <button 
+                  className={`btn-chip ${config.tees === 'both' ? 'active' : ''}`} 
+                  onClick={() => setConfig({ ...config, tees: 'both' })} 
+                  style={{ flex: 1, justifyContent: 'center', background: config.tees === 'both' ? '#64748b' : 'transparent', color: config.tees === 'both' ? 'white' : 'inherit', border: config.tees === 'both' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
+                >
+                  Ambas
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Players */}
@@ -978,63 +1005,69 @@ export default function App() {
 
     return (
       <div className="app-container fade-in playing-screen">
-        <header className="golf-tracker-header" style={{ padding: '0.5rem 0.75rem', justifyContent: 'space-between' }}>
-          <button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, minHeight: '36px', cursor: 'pointer' }} onClick={handleExitPlaying}>
-            Fin
-          </button>
+        <header className="golf-tracker-header" style={{ padding: '0.4rem 0.5rem', display: 'flex', alignItems: 'stretch', gap: '0.5rem', justifyContent: 'space-between' }}>
+          {/* Left Button: Fin */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '0 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, height: '100%', cursor: 'pointer' }} onClick={handleExitPlaying}>
+              Fin
+            </button>
+          </div>
+
+          {/* Compact Hole Navigation inside Header */}
+          <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center', maxWidth: '190px' }}>
+            {/* Left Card: Hole Number */}
+            <div style={{ background: 'white', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', width: '46px', flexShrink: 0 }}>
+              <div style={{ background: '#3b82f6', color: 'white', fontWeight: 800, fontSize: '0.55rem', textAlign: 'center', padding: '2px 0' }}>HOYO</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
+                {hole.number}
+              </div>
+            </div>
+            
+            {/* Right Card: Info */}
+            <div style={{ background: '#e0f2fe', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ background: '#3b82f6', color: 'white', fontWeight: 800, fontSize: '0.55rem', display: 'flex', padding: '2px 4px' }}>
+                <div style={{ width: '12px' }}></div>
+                <div style={{ flex: 1, textAlign: 'center' }}>PAR</div>
+                <div style={{ flex: 1, textAlign: 'center' }}>HCP</div>
+                <div style={{ width: '32px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Flag size={10} color="white" /></div>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 4px', gap: '2px' }}>
+                {(config.tees === 'both' || config.tees === 'yellow') && (
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#334155', fontWeight: 700 }}>
+                    <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#facc15' }}></div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
+                    <div style={{ width: '32px', textAlign: 'right' }}>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
+                  </div>
+                )}
+                {(config.tees === 'both' || config.tees === 'red') && (
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#334155', fontWeight: 700 }}>
+                    <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
+                    <div style={{ width: '32px', textAlign: 'right' }}>{hole.red ? `${hole.red}m` : '-'}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           
+          {/* Right Buttons: Trophy, QR */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
-              <Trophy size={26} />
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setScreen('results')} title="Ver Clasificación">
+              <Trophy size={20} />
             </button>
             {matchId && (
-              <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setShowQr(true)} title="Compartir QR">
-                <QrCode size={26} />
+              <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setShowQr(true)} title="Compartir QR">
+                <QrCode size={20} />
               </button>
             )}
           </div>
         </header>
-
-        {/* Hole Navigation Cards */}
-        <div style={{ display: 'flex', gap: '0.5rem', margin: '0.75rem 1rem' }}>
-          {/* Left Card: Hole Number */}
-          <div style={{ flex: '0 0 80px', background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            <div style={{ background: '#60a5fa', color: 'white', fontWeight: 800, fontSize: '0.75rem', textAlign: 'center', padding: '0.25rem 0', letterSpacing: '1px' }}>HOYO</div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: '#1e293b' }}>
-              {hole.number}
-            </div>
-          </div>
-          
-          {/* Right Card: Info */}
-          <div style={{ flex: 1, background: '#e0f2fe', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            <div style={{ background: '#60a5fa', color: 'white', fontWeight: 800, fontSize: '0.75rem', display: 'flex', padding: '0.25rem 0.5rem' }}>
-              <div style={{ flex: 1 }}></div>
-              <div style={{ flex: 1, textAlign: 'center' }}>PAR</div>
-              <div style={{ flex: 1, textAlign: 'center' }}>HCP</div>
-              <div style={{ width: '40px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Flag size={14} color="white" />
-              </div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0.25rem 0.5rem', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={12} /> <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#facc15' }}></div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
-                <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
-                <div style={{ width: '40px', textAlign: 'right' }}>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={12} /> <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }}></div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
-                <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
-                <div style={{ width: '40px', textAlign: 'right' }}>{hole.red ? `${hole.red}m` : '-'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <main className="player-dashboard"
           onTouchStart={(e) => {
