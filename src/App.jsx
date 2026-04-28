@@ -93,7 +93,7 @@ function calcSindicatoPoints(holeStablefordScores) {
 export default function App() {
   const [screen, setScreen] = useState('setup');
   const [courses, setCourses] = useState([]);
-  const [courseFilter, setCourseFilter] = useState('all');
+  const [courseFilter, setCourseFilter] = useState('favs');
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [course, setCourse] = useState({ name: 'Nuevo Campo', holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 })) });
@@ -150,7 +150,7 @@ export default function App() {
     const raw = localStorage.getItem('partidagolf_saved_players');
     return raw ? JSON.parse(raw) : [];
   });
-  const [playerFilter, setPlayerFilter] = useState('all');
+  const [playerFilter, setPlayerFilter] = useState('fav');
   const [playerSearch, setPlayerSearch] = useState('');
   const [showPlayerForm, setShowPlayerForm] = useState(null); // null=closed, 'new'=create, or player object for edit
   const [playerFormData, setPlayerFormData] = useState({ name: '', surname: '', license_number: '', handicap: 0, photo: null });
@@ -512,7 +512,7 @@ export default function App() {
     setScores(m.scores || {});
     setMatchId(m.id);
     setShowHistory(false);
-    
+
     let missing = false;
     for (let i = 1; i <= m.config.holes; i++) {
       for (const p of m.players) {
@@ -523,7 +523,7 @@ export default function App() {
       }
       if (missing) break;
     }
-    
+
     if (!missing) {
       setScreen('results');
     } else {
@@ -730,14 +730,12 @@ export default function App() {
         </header>
         <main className="content-area">
           <div className="card">
-            <h2 className="card-title"><Target size={18} /> Detalles de la Partida</h2>
             <div className="form-group">
-              <label>Nombre de la partida</label>
-              <input className="input" value={config.name} onChange={e => setConfig({ ...config, name: e.target.value })} />
+              <h2 className="card-title"><Target size={18} /> Detalles de la Partida</h2>
+              <input className="input" placeholder="Nombre de la Partida" value={config.name} onChange={e => setConfig({ ...config, name: e.target.value })} />
             </div>
             <div className="form-group">
-              <label>Fecha</label>
-              <input type="date" className="input" value={config.date} onChange={e => setConfig({ ...config, date: e.target.value })} />
+              <input type="date" className="input" placeholder="Fecha" value={config.date} onChange={e => setConfig({ ...config, date: e.target.value })} />
             </div>
             <div style={{ marginTop: '1rem' }}>
               <button className="btn btn-secondary" onClick={openHistory}>
@@ -752,7 +750,7 @@ export default function App() {
           <div className="card">
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}><MapPin size={18} /> Campos</h2>
-              <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={openNewCourseForm}><Plus size={14} /> Nuevo</button>
+              <button className="btn" style={{ background: '#22c55e', color: 'white', padding: '6px 16px', fontSize: '0.95rem', fontWeight: 'bold', border: 'none', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: 'auto', width: 'auto' }} onClick={openNewCourseForm}><Plus size={16} />&nbsp;&nbsp;Nuevo&nbsp;&nbsp;</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -861,7 +859,7 @@ export default function App() {
                       {p.license_number && <span>· Lic: {p.license_number}</span>}
                     </div>
                   </div>
-                  <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => setShowPlayerPicker(i)}>
+                  <button className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--primary)' }} onClick={() => { setPlayerFilter('fav'); setShowPlayerPicker(i); }}>
                     <Users size={18} />
                   </button>
                   {players.length > 1 && (
@@ -1281,58 +1279,110 @@ export default function App() {
             return (
               <div
                 key={p.id}
-                className={`player-card-v2 player-${idx % 4}`}
+                className={`player-card-v2 ${isFlipped ? '' : `player-${idx % 4}`}`}
+                style={{
+                  ...(isFlipped ? { background: '#fef9c3', color: '#000000', border: '2px solid #d69e2e', minHeight: '240px' } : {})
+                }}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchMove}
               >
-                <div className="player-card-header">
+                <div className="player-card-header" style={{
+                  background: isFlipped ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.12)',
+                  borderBottom: isFlipped ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.2)',
+                  color: isFlipped ? '#000000' : '#ffffff'
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: p.photo ? 'none' : 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: p.photo ? 'none' : (isFlipped ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
                       {p.photo ? (
                         <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <Users size={14} />
+                        <Users size={14} color={isFlipped ? '#000000' : '#ffffff'} />
                       )}
                     </div>
-                    <span>{p.name.toUpperCase()}</span>
+                    <span style={{ color: isFlipped ? '#000000' : '#ffffff' }}>{p.name.toUpperCase()}</span>
                   </div>
-                  <span>({p.handicap})</span>
+                  <span style={{ color: isFlipped ? '#000000' : '#ffffff' }}>({p.handicap})</span>
                 </div>
 
                 {isFlipped ? (
-                  <div className="player-card-detail" style={{ padding: '0.35rem', flex: 1, overflowY: 'auto', maxHeight: '125px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem', color: 'white' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.3)', opacity: 0.8 }}>
-                          <th style={{ textAlign: 'left', padding: '2px' }}>H</th>
-                          <th style={{ textAlign: 'center', padding: '2px' }}>Gol</th>
-                          <th style={{ textAlign: 'center', padding: '2px' }}>Net</th>
-                          <th style={{ textAlign: 'center', padding: '2px' }}>Stb</th>
-                          <th style={{ textAlign: 'center', padding: '2px' }}>Scr</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {course.holes.slice(0, config.holes).map(h => {
-                          const s = scores[h.number]?.[p.id] || 0;
-                          const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
-                          const net = s > 0 ? s - hcpStrokes : '–';
-                          const stb = s > 0 ? calcStableford(s, h.par, hcpStrokes) : '–';
-                          const scr = s > 0 ? calcStableford(s, h.par, 0) : '–';
-                          return (
-                            <tr key={h.number} style={{ borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
-                              <td style={{ textAlign: 'left', padding: '2px', fontWeight: 800 }}>{h.number}</td>
-                              <td style={{ textAlign: 'center', padding: '2px' }}>{s > 0 ? s : '–'}</td>
-                              <td style={{ textAlign: 'center', padding: '2px' }}>{net}</td>
-                              <td style={{ textAlign: 'center', padding: '2px' }}>{stb}</td>
-                              <td style={{ textAlign: 'center', padding: '2px' }}>{scr}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="player-card-detail" style={{ padding: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
+                    {(() => {
+                      const renderPart = (start, end) => {
+                        const holesSlice = course.holes.slice(start, end);
+                        return (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem', color: '#000000' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(0,0,0,0.05)' }}>
+                                <th style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800, width: '32px' }}>H</th>
+                                {holesSlice.map(h => (
+                                  <th key={`th-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{h.number}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>Gol</td>
+                                {holesSlice.map(h => {
+                                  const s = scores[h.number]?.[p.id] || 0;
+                                  let scoreBg = 'transparent';
+                                  let scoreColor = '#000000';
+                                  if (s > 0) {
+                                    const d = s - h.par;
+                                    if (d <= -2) { scoreBg = '#7dd3fc'; }
+                                    else if (d === -1) { scoreBg = '#f87171'; }
+                                    else if (d === 0) { scoreBg = '#4ade80'; }
+                                    else if (d === 1) { scoreBg = '#facc15'; }
+                                    else { scoreBg = '#6b7280'; scoreColor = '#ffffff'; }
+                                  }
+                                  return (
+                                    <td key={`gol-${h.number}`} style={{ textAlign: 'center', padding: '2px', border: '1px solid rgba(0,0,0,0.15)' }}>
+                                      {s > 0 ? (
+                                        <span style={{ background: scoreBg, color: scoreColor, padding: '2px 5px', borderRadius: '3px', fontWeight: 800, display: 'inline-block', minWidth: '16px' }}>{s}</span>
+                                      ) : '–'}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                              <tr>
+                                <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Net</td>
+                                {holesSlice.map(h => {
+                                  const s = scores[h.number]?.[p.id] || 0;
+                                  const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                                  const net = s > 0 ? s - hcpStrokes : '–';
+                                  return <td key={`net-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{net}</td>;
+                                })}
+                              </tr>
+                              <tr>
+                                <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Stb</td>
+                                {holesSlice.map(h => {
+                                  const s = scores[h.number]?.[p.id] || 0;
+                                  const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                                  const stb = s > 0 ? calcStableford(s, h.par, hcpStrokes) : '–';
+                                  return <td key={`stb-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{stb}</td>;
+                                })}
+                              </tr>
+                              <tr>
+                                <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Scr</td>
+                                {holesSlice.map(h => {
+                                  const s = scores[h.number]?.[p.id] || 0;
+                                  const scr = s > 0 ? calcStableford(s, h.par, 0) : '–';
+                                  return <td key={`scr-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{scr}</td>;
+                                })}
+                              </tr>
+                            </tbody>
+                          </table>
+                        );
+                      };
+                      return (
+                        <>
+                          {renderPart(0, Math.min(9, config.holes))}
+                          {config.holes > 9 && renderPart(9, Math.min(18, config.holes))}
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <>
