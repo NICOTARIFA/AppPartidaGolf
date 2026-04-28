@@ -755,10 +755,10 @@ export default function App() {
                   />
                 </form>
                 {/* Filter chips */}
-                <div className="flex-gap" style={{ marginBottom: '0.5rem' }}>
-                  <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} onClick={() => setPlayerFilter('all')}>Todos</button>
-                  <button className={`btn-chip ${playerFilter === 'fav' ? 'active' : ''}`} onClick={() => setPlayerFilter('fav')}><Star size={14} /> Favs</button>
-                  <button className="btn-chip active" style={{ marginLeft: 'auto', background: 'var(--primary)', color: 'white' }} onClick={openNewPlayerForm}><Plus size={14} /> Nuevo</button>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '2px' }}>
+                  <button className={`btn-chip ${playerFilter === 'all' ? 'active' : ''}`} style={{ flexShrink: 0 }} onClick={() => setPlayerFilter('all')}>Todos</button>
+                  <button className={`btn-chip ${playerFilter === 'fav' ? 'active' : ''}`} style={{ flexShrink: 0 }} onClick={() => setPlayerFilter('fav')}><Star size={14} /> Favs</button>
+                  <button className="btn-chip active" style={{ marginLeft: 'auto', background: 'var(--primary)', color: 'white', flexShrink: 0 }} onClick={openNewPlayerForm}><Plus size={14} /> Nuevo</button>
                 </div>
                 <div className="saved-players-list">
                   {(() => {
@@ -772,27 +772,31 @@ export default function App() {
                       </div>
                     ) : (
                       filtered.map(sp => (
-                        <div key={sp.id} className="saved-player-item">
-                          {sp.photo ? (
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-                              <img src={sp.photo} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
-                          ) : (
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <Users size={16} color="#94a3b8" />
-                            </div>
-                          )}
-                          <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => { selectSavedPlayer(sp, showPlayerPicker); setPlayerSearch(''); }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem' }}>
+                        <div key={sp.id} className="saved-player-item" style={{ alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                            {sp.photo ? (
+                              <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden' }}>
+                                <img src={sp.photo} alt={sp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            ) : (
+                              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Users size={16} color="#94a3b8" />
+                              </div>
+                            )}
+                            <button className="btn-icon-sm" style={{ width: '28px', height: '28px' }} onClick={() => toggleFavorite(sp.id)}>
+                              <Star size={14} fill={sp.isFavorite ? "var(--gold)" : "none"} color={sp.isFavorite ? "var(--gold)" : "currentColor"} />
+                            </button>
+                          </div>
+
+                          <div style={{ flex: 1, cursor: 'pointer', minWidth: 0, padding: '0 0.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', marginTop: '2px' }} onClick={() => { selectSavedPlayer(sp, showPlayerPicker); setPlayerSearch(''); }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: '1.2', marginBottom: '0.35rem' }}>{sp.name}{sp.surname ? ` ${sp.surname}` : ''}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                               <span>HCP: {sp.handicap}</span>
                               {sp.license_number && <span>· Lic: {sp.license_number}</span>}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <button className="btn-icon-sm" onClick={() => toggleFavorite(sp.id)}>
-                              <Star size={16} fill={sp.isFavorite ? "var(--gold)" : "none"} color={sp.isFavorite ? "var(--gold)" : "currentColor"} />
-                            </button>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                             <button className="btn-icon-sm" onClick={() => openEditPlayerForm(sp)}>
                               <Edit3 size={16} color="var(--primary)" />
                             </button>
