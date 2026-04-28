@@ -1349,18 +1349,29 @@ export default function App() {
                                   const s = scores[h.number]?.[p.id] || 0;
                                   let scoreBg = 'transparent';
                                   let scoreColor = '#000000';
+                                  let isCircle = false;
                                   if (s > 0) {
                                     const d = s - h.par;
-                                    if (d <= -2) { scoreBg = '#7dd3fc'; }
-                                    else if (d === -1) { scoreBg = '#f87171'; }
-                                    else if (d === 0) { scoreBg = '#4ade80'; }
-                                    else if (d === 1) { scoreBg = '#facc15'; }
-                                    else { scoreBg = '#6b7280'; scoreColor = '#ffffff'; }
+                                    if (d <= -2) { scoreBg = '#3b82f6'; scoreColor = '#ffffff'; isCircle = true; }
+                                    else if (d === -1) { scoreBg = '#ef4444'; scoreColor = '#ffffff'; isCircle = true; }
+                                    else if (d === 0) { scoreBg = 'transparent'; scoreColor = '#000000'; }
+                                    else if (d === 1) { scoreBg = '#1e3a8a'; scoreColor = '#ffffff'; }
+                                    else { scoreBg = '#374151'; scoreColor = '#ffffff'; }
                                   }
                                   return (
                                     <td key={`gol-${h.number}`} style={{ textAlign: 'center', padding: '2px', border: '1px solid rgba(0,0,0,0.15)' }}>
                                       {s > 0 ? (
-                                        <span style={{ background: scoreBg, color: scoreColor, padding: '2px 5px', borderRadius: '3px', fontWeight: 800, display: 'inline-block', minWidth: '16px' }}>{s}</span>
+                                        <span style={{
+                                          background: scoreBg,
+                                          color: scoreColor,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          width: '18px',
+                                          height: '18px',
+                                          borderRadius: isCircle ? '50%' : '3px',
+                                          fontWeight: 800
+                                        }}>{s}</span>
                                       ) : '–'}
                                     </td>
                                   );
