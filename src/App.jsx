@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3, Search, X, Flag } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3, Search, X, Flag, Gamepad2 } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -142,6 +142,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
   const [showQr, setShowQr] = useState(false);
+  const [showCartas, setShowCartas] = useState(false);
   const [showPlayerPicker, setShowPlayerPicker] = useState(false);
   const [savedPlayers, setSavedPlayers] = useState(() => {
     const raw = localStorage.getItem('partidagolf_saved_players');
@@ -1108,8 +1109,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Buttons: Trophy, QR */}
+          {/* Right Buttons: Trophy, QR, Cartas */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setShowCartas(true)} title="Juego de Cartas">
+              <Gamepad2 size={20} />
+            </button>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setScreen('results')} title="Ver Clasificación">
               <Trophy size={20} />
             </button>
@@ -1284,6 +1288,24 @@ export default function App() {
               <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
                 Cerrar
               </button>
+            </div>
+          </div>
+        )}
+
+        {showCartas && (
+          <div className="modal-overlay" onClick={() => setShowCartas(false)} style={{ zIndex: 1000 }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95vw', maxWidth: '800px', height: '90vh', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--primary)', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>Juego de Cartas</h3>
+                <button className="btn-icon-sm" onClick={() => setShowCartas(false)} style={{ color: 'white' }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <iframe 
+                src="./JuegoCartas/cartas.html" 
+                style={{ width: '100%', flex: 1, border: 'none', zoom: '0.9' }}
+                title="Juego de Cartas"
+              />
             </div>
           </div>
         )}

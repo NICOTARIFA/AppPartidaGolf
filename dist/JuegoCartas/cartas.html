@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Golf Caótico</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel para compilar JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Ocultar barra de scroll para filtros */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-yellow-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        // --- CONFIGURACIÓN DE API GEMINI ---
+        // ¡Importante! Asegúrate de colocar tu API Key real si el entorno lo requiere.
+        const apiKey = "";
+        const MODEL_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+
+        const callGemini = async (prompt, systemPrompt = "") => {
+          let delay = 1000;
+          for (let i = 0; i < 5; i++) {
+            try {
+              const response = await fetch(`${MODEL_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  systemInstruction: { parts: [{ text: systemPrompt }] }
+                })
+              });
+              if (!response.ok) throw new Error('API Error');
+              const data = await response.json();
+              return data.candidates?.[0]?.content?.parts?.[0]?.text;
+            } catch (error) {
+              if (i === 4) throw error;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              delay *= 2;
+            }
+          }
+        };
+
+        // --- ICONOS INTERFAZ (Reemplazo de dependencias externas) ---
+        const Sparkles = ({ size = 24, className = "" }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+        );
+        const Loader2 = ({ size = 24, className = "" }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        );
+        const RefreshCw = ({ size = 24, strokeWidth = 2, className = "" }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        );
+        const CheckCircle2 = ({ size = 24, strokeWidth = 2, className = "" }) => (
+          <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        );
+
+        // --- ICONOS TEMÁTICOS HECHOS A MANO (SVG SKETCH) ---
+        const CustomCartoonIcons = {
+          Grulla: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M40,70 C40,50 45,40 50,30 C55,20 60,15 65,15 C68,15 70,18 70,22 L65,25" />
+              <path d="M40,70 C30,70 25,60 30,50 C35,40 50,45 60,55 C65,65 60,75 40,75" fill="currentColor" className="fill-black/10" />
+              <path d="M45,75 L45,95" strokeWidth="4" />
+              <path d="M50,75 L60,85 L50,85" strokeWidth="4" />
+              <circle cx="66" cy="19" r="1.5" fill="black" />
+            </svg>
+          ),
+          CaddieZombie: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M35,40 C35,25 65,25 65,40 C65,55 55,60 50,60 C45,60 35,55 35,40" fill="currentColor" className="fill-black/10" />
+              <path d="M40,35 L45,40 M55,35 L60,40" strokeWidth="4" />
+              <path d="M45,50 Q50,55 55,50" />
+              <path d="M70,40 L80,85 L60,85 L70,40" strokeWidth="3" />
+              <path d="M72,35 L75,25 M68,35 L65,25" />
+            </svg>
+          ),
+          OjosVendados: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <circle cx="50" cy="50" r="30" fill="currentColor" className="fill-black/10" />
+              <path d="M20,40 L80,45 L80,55 L20,50 Z" fill="black" />
+              <path d="M80,45 L90,40 M80,55 L90,60" />
+              <path d="M45,70 Q50,65 55,70" />
+            </svg>
+          ),
+          ManosLocas: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M30,60 L20,40 C15,30 35,20 40,35 L40,60" />
+              <path d="M70,40 L80,60 C85,70 65,80 60,65 L60,40" fill="currentColor" className="fill-black/10" />
+              <path d="M45,50 L55,50" strokeDasharray="4,4" />
+            </svg>
+          ),
+          Grito: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M50,50 M30,40 C20,50 20,70 30,80 C40,90 60,90 70,80 C80,70 80,50 70,40" fill="currentColor" className="fill-black/20" />
+              <ellipse cx="50" cy="65" rx="15" ry="20" fill="black" />
+              <path d="M20,30 L10,20 M30,20 L25,10 M70,20 L75,10 M85,30 L95,20" strokeWidth="5" />
+            </svg>
+          ),
+          Caracol: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M20,80 C40,80 80,80 90,80 C95,80 95,70 85,70 L30,70" />
+              <path d="M30,70 C20,70 20,40 40,30 C60,20 85,40 75,65 C70,75 50,75 45,70" fill="currentColor" className="fill-black/10" />
+              <path d="M50,45 A10,10 0 1,1 60,55" />
+              <path d="M20,80 L15,70 M25,80 L22,70" />
+            </svg>
+          ),
+          Soplido: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <circle cx="40" cy="50" r="25" fill="currentColor" className="fill-black/10" />
+              <path d="M60,50 H90 M80,45 L90,50 L80,55" strokeWidth="4" />
+              <path d="M55,40 Q65,50 55,60" strokeWidth="5" />
+              <path d="M30,45 L32,47 M45,45 L43,47" strokeWidth="3" />
+            </svg>
+          ),
+          Cuenca: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <circle cx="35" cy="50" r="15" />
+              <circle cx="65" cy="50" r="15" />
+              <circle cx="40" cy="50" r="4" fill="black" />
+              <circle cx="60" cy="50" r="4" fill="black" />
+              <path d="M10,50 L20,50 M80,50 L90,50 M50,10 L50,20" />
+              <path d="M20,20 L80,80 M80,20 L20,80" strokeDasharray="4,4" opacity="0.3" />
+            </svg>
+          ),
+          Bailar: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M50,30 L50,60 L30,80 M50,60 L70,80" strokeWidth="5" />
+              <path d="M50,40 L30,30 M50,40 L70,50" strokeWidth="5" />
+              <circle cx="50" cy="20" r="10" fill="currentColor" className="fill-black/10" />
+              <path d="M10,20 Q15,10 20,20 M80,80 Q85,70 90,80" stroke="red" strokeWidth="4" />
+            </svg>
+          ),
+          Fuego: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <path d="M50,90 C20,90 20,60 50,20 C80,60 80,90 50,90 Z" fill="currentColor" className="fill-black/20" />
+              <path d="M50,80 C40,80 40,70 50,55 C60,70 60,80 50,80 Z" fill="red" opacity="0.5" />
+              <path d="M30,50 L20,40 M70,50 L80,40 M50,15 L50,5" strokeWidth="4" />
+            </svg>
+          ),
+          Default: () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-black stroke-[3]">
+              <circle cx="50" cy="50" r="40" strokeDasharray="4,4" />
+              <path d="M40,40 L60,60 M60,40 L40,60" />
+            </svg>
+          )
+        };
+
+        const getIconForCard = (id) => {
+          switch (id) {
+            case 1: return CustomCartoonIcons.Grulla;
+            case 2: return CustomCartoonIcons.CaddieZombie;
+            case 3: return CustomCartoonIcons.OjosVendados;
+            case 4: return CustomCartoonIcons.ManosLocas;
+            case 5: return CustomCartoonIcons.Grito;
+            case 6: return CustomCartoonIcons.Caracol;
+            case 7: return CustomCartoonIcons.Soplido;
+            case 8: return CustomCartoonIcons.Cuenca;
+            case 9: return CustomCartoonIcons.Bailar;
+            case 10: return CustomCartoonIcons.Fuego;
+            default: return CustomCartoonIcons.Default;
+          }
+        };
+
+        // --- COMPONENTE VISUAL DE CARTA ---
+        const CardVisual = ({ title, description, type, flavorText, isCustom, isLarge, id }) => {
+          const getTheme = (type) => {
+            const baseShadow = isLarge ? "shadow-[16px_16px_0px_0px_rgba(0,0,0,1)]" : "shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]";
+            switch (type) {
+              case 'Físico': return { bg: 'bg-orange-400', border: 'border-black', shadow: baseShadow };
+              case 'Equipo': return { bg: 'bg-blue-400', border: 'border-black', shadow: baseShadow };
+              case 'Mental': return { bg: 'bg-purple-400', border: 'border-black', shadow: baseShadow };
+              case 'Entorno': return { bg: 'bg-green-400', border: 'border-black', shadow: baseShadow };
+              case 'IA': return { bg: 'bg-pink-400', border: 'border-black', shadow: baseShadow };
+              default: return { bg: 'bg-gray-400', border: 'border-black', shadow: baseShadow };
+            }
+          };
+
+          const theme = getTheme(type);
+          const IconComponent = getIconForCard(id);
+
+          return (
+            <div className={`w-full h-full rounded-[45px] border-[8px] flex flex-col overflow-hidden transition-all duration-300 transform cursor-pointer
+              ${theme.bg} ${theme.border} ${theme.shadow} 
+              ${!isLarge ? 'hover:-translate-y-4 hover:rotate-3 active:scale-95' : ''}`}>
+              
+              <div className="px-5 py-3 border-b-[8px] border-black/20 flex justify-between items-center bg-black/10">
+                <span className={`${isLarge ? 'text-2xl' : 'text-sm'} font-black text-white uppercase tracking-tighter drop-shadow-md italic`}>{type}</span>
+                <div className="bg-white p-2 rounded-full border-4 border-black">
+                  <Sparkles size={isLarge ? 24 : 14} className="text-black" />
+                </div>
+              </div>
+              
+              <div className={`${isLarge ? 'h-64' : 'h-40'} flex items-center justify-center relative bg-white/40 m-4 rounded-[35px] border-4 border-black/10 overflow-hidden`}>
+                 <div className={`relative ${isLarge ? 'w-48 h-48' : 'w-28 h-28'} bg-white rounded-full border-[8px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 flex items-center justify-center`}>
+                    <IconComponent />
+                 </div>
+                 {isCustom && (
+                    <div className="absolute top-4 right-4 bg-yellow-300 p-3 rounded-2xl border-4 border-black rotate-12 animate-bounce">
+                      <Sparkles size={isLarge ? 32 : 20} className="text-black" />
+                    </div>
+                 )}
+              </div>
+
+              <div className="flex-1 bg-white m-4 mt-0 rounded-[30px] p-6 flex flex-col border-[6px] border-black shadow-inner">
+                <h3 className={`${isLarge ? 'text-4xl' : 'text-2xl'} font-black text-gray-900 leading-none mb-3 uppercase italic tracking-tighter border-b-[10px] border-yellow-400 pb-2`}>
+                  {title}
+                </h3>
+                
+                <div className="flex-1 overflow-y-auto">
+                  <p className={`text-gray-900 ${isLarge ? 'text-3xl' : 'text-xl'} font-black leading-tight tracking-tight`}>
+                    {description}
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-3 border-t-4 border-dashed border-gray-200">
+                  <p className={`${isLarge ? 'text-lg' : 'text-[10px]'} italic text-gray-500 font-black uppercase opacity-60`}>
+                    "{flavorText}"
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- MODAL DE ACCIÓN ---
+        const MobileModal = ({ card, onClose, onUse }) => {
+          if (!card) return null;
+          return (
+            <div className="fixed inset-0 z-50 flex flex-col justify-center items-center bg-black/90 backdrop-blur-md p-6 animate-in fade-in">
+              <div className="w-full max-w-lg h-[80vh] flex flex-col animate-in zoom-in duration-300">
+                <div className="flex-1 relative">
+                  <CardVisual {...card} isCustom={card.type === 'IA'} isLarge={true} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6 mt-10">
+                  <button 
+                    onClick={onClose}
+                    className="bg-white text-black font-black py-5 rounded-[25px] border-[8px] border-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all uppercase text-xl italic"
+                  >
+                    VOLVER
+                  </button>
+                  <button 
+                    onClick={() => onUse(card.id)}
+                    className="bg-red-500 text-white font-black py-5 rounded-[25px] border-[8px] border-black shadow-[8px_8px_0px_0px_rgba(239,68,68,0.3)] active:translate-y-1 transition-all uppercase text-xl italic flex items-center justify-center gap-3"
+                  >
+                    <CheckCircle2 size={30} strokeWidth={3} /> ¡USAR!
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- APP PRINCIPAL ---
+        const App = () => {
+          const initialData = [
+            { id: 1, title: "La Grulla", description: "¡Swing apoyado SOLO en tu pierna mala!", type: "Físico", flavorText: "Equilibrio ninja." },
+            { id: 2, title: "Caddie Malvado", description: "Tu rival elige el palo. ¡Incluso el Putter en el búnker!", type: "Equipo", flavorText: "Mala suerte." },
+            { id: 3, title: "Ciego Total", description: "Cierra los ojos antes de moverte y no los abras.", type: "Mental", flavorText: "Confía en tu instinto." },
+            { id: 4, title: "Mano Loca", description: "Invierte la posición de tus manos en el grip.", type: "Físico", flavorText: "Cerebro frito." },
+            { id: 5, title: "¡GRITA!", description: "Suelta un grito de guerra al impactar la bola.", type: "Mental", flavorText: "¡LIBERAAAD!" },
+            { id: 6, title: "Cámara Lenta", description: "Backswing de 10 segundos obligatorios. ¡Lento!", type: "Físico", flavorText: "Tensión máxima." },
+            { id: 7, title: "Soplido", description: "En Putts, tus rivales pueden soplar tu bola.", type: "Entorno", flavorText: "Viento huracanado." },
+            { id: 8, title: "Mira a Cuenca", description: "Apunta 30 grados fuera del objetivo real.", type: "Mental", flavorText: "¿Dónde vas?" },
+            { id: 9, title: "¡A Bailar!", description: "Debes bailar algo ridículo antes de tirar.", type: "Físico", flavorText: "El ritmo es clave." },
+            { id: 10, title: "Potencia 101%", description: "Golpea con TODA tu fuerza, sin importar nada.", type: "Físico", flavorText: "¡Hulk aplasta!" }
+          ];
+
+          const [cards, setCards] = useState(initialData);
+          const [selectedCard, setSelectedCard] = useState(null);
+          const [filter, setFilter] = useState('Todas');
+          const [isGenerating, setIsGenerating] = useState(false);
+          const [prompt, setPrompt] = useState('');
+
+          const types = ['Todas', 'Físico', 'Mental', 'Equipo', 'Entorno', 'IA'];
+
+          const handleUseCard = (id) => {
+            setCards(prev => prev.filter(c => c.id !== id));
+            setSelectedCard(null);
+          };
+
+          const generateIACard = async () => {
+            if (!prompt.trim()) return;
+            setIsGenerating(true);
+            try {
+              const systemPrompt = "Eres un diseñador de cómics. Genera JSON: {title, description, type:'IA', flavorText} en español, tono agresivo y divertido.";
+              const res = await callGemini(`Nueva maldad: ${prompt}`, systemPrompt);
+              const cleanJson = res.replace(/```json|```/g, "").trim();
+              const newCard = { ...JSON.parse(cleanJson), id: Date.now() };
+              setCards([newCard, ...cards]);
+              setPrompt('');
+            } catch (e) { console.error(e); } finally { setIsGenerating(false); }
+          };
+
+          const filteredCards = useMemo(() => 
+            filter === 'Todas' ? cards : cards.filter(c => c.type === filter)
+          , [cards, filter]);
+
+          return (
+            <div className="min-h-screen font-sans pb-32 select-none overflow-x-hidden p-4">
+              <header className="bg-white border-[8px] border-black p-6 rounded-[35px] flex justify-between items-center shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] mb-8">
+                <div>
+                  <h1 className="font-black italic text-4xl tracking-tighter uppercase leading-none">GOLF</h1>
+                  <h1 className="font-black italic text-5xl tracking-tighter uppercase leading-none text-red-500">CAÓTICO</h1>
+                </div>
+                <div className="bg-black text-white px-6 py-3 rounded-2xl text-xl font-black italic shadow-[6px_6px_0px_0px_rgba(0,0,1,0.2)]">
+                  {cards.length}
+                </div>
+              </header>
+
+              <section className="bg-white p-6 rounded-[40px] border-[8px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-10">
+                <div className="flex gap-4">
+                  <input 
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Escribe un castigo..."
+                    className="flex-1 bg-yellow-50 border-[6px] border-black rounded-[25px] px-6 py-4 font-black text-xl outline-none italic placeholder:opacity-30"
+                  />
+                  <button 
+                    onClick={generateIACard}
+                    disabled={isGenerating}
+                    className="bg-pink-500 text-white p-5 rounded-[25px] border-[8px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 transition-all"
+                  >
+                    {isGenerating ? <Loader2 size={35} /> : <Sparkles size={35} />}
+                  </button>
+                </div>
+              </section>
+
+              <div className="flex overflow-x-auto gap-4 mb-10 no-scrollbar pb-4">
+                {types.map(t => (
+                  <button 
+                    key={t}
+                    onClick={() => setFilter(t)}
+                    className={`whitespace-nowrap px-8 py-4 rounded-full border-[6px] border-black font-black text-lg uppercase tracking-tighter transition-all ${
+                      filter === t ? 'bg-black text-white scale-110' : 'bg-white text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-7xl mx-auto">
+                {filteredCards.map((card) => (
+                  <div 
+                    key={card.id} 
+                    onClick={() => setSelectedCard(card)}
+                    className="h-[550px]"
+                  >
+                    <CardVisual {...card} isCustom={card.type === 'IA'} isLarge={false} id={card.id} />
+                  </div>
+                ))}
+              </main>
+
+              {filteredCards.length === 0 && (
+                <div className="text-center py-20 bg-white border-[10px] border-black rounded-[50px] shadow-[15px_15px_0px_0px_rgba(0,0,0,1)] rotate-2 max-w-2xl mx-auto">
+                   <p className="font-black text-5xl uppercase italic tracking-tighter">¡NO QUEDAN CARTAS!</p>
+                   <button onClick={() => setCards(initialData)} className="mt-8 bg-red-500 text-white px-10 py-4 rounded-full border-[6px] border-black font-black uppercase text-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1">RECARGAR MAZO</button>
+                </div>
+              )}
+
+              <MobileModal 
+                card={selectedCard} 
+                onClose={() => setSelectedCard(null)} 
+                onUse={handleUseCard} 
+              />
+
+              <button 
+                onClick={() => setCards(initialData)}
+                className="fixed bottom-8 right-8 bg-white text-black p-6 rounded-full border-[8px] border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:rotate-180 transition-all duration-700 z-30"
+              >
+                <RefreshCw size={40} strokeWidth={4} />
+              </button>
+            </div>
+          );
+        };
+
+        // Renderizado inicial
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
