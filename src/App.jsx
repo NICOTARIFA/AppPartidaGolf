@@ -142,8 +142,10 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [matchId, setMatchId] = useState(null);
   const [showQr, setShowQr] = useState(false);
-  const [showCartas, setShowCartas] = useState(false);
   const [showPlayerPicker, setShowPlayerPicker] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyMatches, setHistoryMatches] = useState([]);
+  const [flippedCards, setFlippedCards] = useState({});
   const [savedPlayers, setSavedPlayers] = useState(() => {
     const raw = localStorage.getItem('partidagolf_saved_players');
     return raw ? JSON.parse(raw) : [];
@@ -492,20 +494,56 @@ export default function App() {
     setShowPlayerPicker(false);
   };
 
+  const openHistory = async () => {
+    setShowHistory(true);
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) {
+      setHistoryMatches(data);
+    }
+  };
+
+  const loadMatch = (m) => {
+    setConfig(m.config);
+    setCourse(m.course);
+    setPlayers(m.players);
+    setScores(m.scores || {});
+    setMatchId(m.id);
+    setShowHistory(false);
+    
+    let missing = false;
+    for (let i = 1; i <= m.config.holes; i++) {
+      for (const p of m.players) {
+        if (!m.scores[i] || !m.scores[i][p.id]) {
+          missing = true;
+          break;
+        }
+      }
+      if (missing) break;
+    }
+    
+    if (!missing) {
+      setScreen('results');
+    } else {
+      setScreen('playing');
+    }
+  };
+
   const startNewMatch = async (online = false) => {
     setScores({});
     setHoleIdx(0);
 
-    if (online) {
-      const { data, error } = await supabase
-        .from('matches')
-        .insert([{ config, course, players, scores: {} }])
-        .select();
-      if (data && data[0]) {
-        setMatchId(data[0].id);
+    const { data, error } = await supabase
+      .from('matches')
+      .insert([{ config, course, players, scores: {} }])
+      .select();
+    if (data && data[0]) {
+      setMatchId(data[0].id);
+      if (online) {
+        setShowQr(true);
       }
-    } else {
-      setMatchId(null);
     }
     setScreen('playing');
   };
@@ -700,6 +738,11 @@ export default function App() {
             <div className="form-group">
               <label>Fecha</label>
               <input type="date" className="input" value={config.date} onChange={e => setConfig({ ...config, date: e.target.value })} />
+            </div>
+            <div style={{ marginTop: '1rem' }}>
+              <button className="btn btn-secondary" onClick={openHistory}>
+                <RefreshCcw size={18} /> Historial de Partidas
+              </button>
             </div>
           </div>
 
@@ -918,6 +961,43 @@ export default function App() {
             </div>
           )}
 
+          {showHistory && (
+            <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+              <div className="modal-content" style={{ maxWidth: '600px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '1rem' }} onClick={e => e.stopPropagation()}>
+                <div className="flex-between" style={{ marginBottom: '1rem', flexShrink: 0 }}>
+                  <h3 style={{ margin: 0 }}>Historial de Partidas</h3>
+                  <button className="btn-icon-sm" onClick={() => setShowHistory(false)}><X size={20} /></button>
+                </div>
+                <div style={{ overflowY: 'auto', paddingRight: '0.5rem', flex: 1 }}>
+                  {historyMatches.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay partidas registradas.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {historyMatches.map(m => (
+                        <div key={m.id} className="card" style={{ padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '12px', background: '#f8fafc', margin: 0 }}>
+                          <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                            <strong style={{ color: 'var(--primary)' }}>{m.config.name || 'Partida sin nombre'}</strong>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(m.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                            <div><strong>Campo:</strong> {m.course.name}</div>
+                            <div><strong>Modalidad:</strong> {m.config.system} ({m.config.holes} Hoyos)</div>
+                            <div><strong>Jugadores:</strong> {m.players.map(p => p.name).join(', ')}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn btn-primary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => loadMatch(m)}>
+                              Cargar Partida
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Player Form Modal (Create / Edit) */}
           {showPlayerForm && (
             <div className="modal-overlay" onClick={() => setShowPlayerForm(null)}>
@@ -1109,11 +1189,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Buttons: Trophy, QR, Cartas */}
+          {/* Right Buttons: Trophy, QR */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setShowCartas(true)} title="Juego de Cartas">
-              <Gamepad2 size={20} />
-            </button>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setScreen('results')} title="Ver Clasificación">
               <Trophy size={20} />
             </button>
@@ -1142,22 +1219,43 @@ export default function App() {
             const currentScore = scores[hole.number]?.[p.id] || 0;
             const diff = currentScore > 0 ? currentScore - hole.par : 0;
             const displayDiff = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
+            const isFlipped = flippedCards[p.id] || false;
 
             const handleTouchStart = (e) => {
               isLongPressRef.current = false;
+              const touch = e.touches[0];
+              e.currentTarget._startX = touch.clientX;
+              e.currentTarget._startY = touch.clientY;
+
               longPressTimerRef.current = setTimeout(() => {
                 isLongPressRef.current = true;
-                if (currentScore > 0) setScore(p.id, currentScore - 1);
+                if (currentScore > 0 && !isFlipped) setScore(p.id, currentScore - 1);
               }, 500);
             };
 
             const handleTouchEnd = (e) => {
               clearTimeout(longPressTimerRef.current);
               if (isLongPressRef.current) {
-                e.preventDefault(); // Prevent click from firing
+                e.preventDefault();
                 return;
               }
-              // Normal tap = +1 stroke (auto-par on first tap)
+
+              const touch = e.changedTouches[0];
+              const deltaX = touch.clientX - e.currentTarget._startX;
+              const deltaY = touch.clientY - e.currentTarget._startY;
+
+              if (Math.abs(deltaX) > 40 && Math.abs(deltaY) < 40) {
+                if (deltaX < 0) {
+                  setFlippedCards(prev => ({ ...prev, [p.id]: true }));
+                } else {
+                  setFlippedCards(prev => ({ ...prev, [p.id]: false }));
+                }
+                e.preventDefault();
+                return;
+              }
+
+              if (isFlipped) return;
+
               const newScore = currentScore === 0 ? hole.par : currentScore + 1;
               if (newScore <= 15) setScore(p.id, newScore);
             };
@@ -1167,7 +1265,7 @@ export default function App() {
             };
 
             const handleClick = (e) => {
-              // Desktop fallback: only if not triggered by touch
+              if (isFlipped) return;
               if (!('ontouchstart' in window)) {
                 const newScore = currentScore === 0 ? hole.par : currentScore + 1;
                 if (newScore <= 15) setScore(p.id, newScore);
@@ -1176,7 +1274,7 @@ export default function App() {
 
             const handleContextMenu = (e) => {
               e.preventDefault();
-              // Desktop right-click fallback for -1
+              if (isFlipped) return;
               if (currentScore > 0) setScore(p.id, currentScore - 1);
             };
 
@@ -1204,19 +1302,55 @@ export default function App() {
                   <span>({p.handicap})</span>
                 </div>
 
-                <div className="player-card-body">
-                  <div className="card-gross-score">{currentScore || 'P'}</div>
-                  <div className="card-relative-score">{currentScore > 0 ? displayDiff : 'P'}</div>
-                </div>
+                {isFlipped ? (
+                  <div className="player-card-detail" style={{ padding: '0.35rem', flex: 1, overflowY: 'auto', maxHeight: '125px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem', color: 'white' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.3)', opacity: 0.8 }}>
+                          <th style={{ textAlign: 'left', padding: '2px' }}>H</th>
+                          <th style={{ textAlign: 'center', padding: '2px' }}>Gol</th>
+                          <th style={{ textAlign: 'center', padding: '2px' }}>Net</th>
+                          <th style={{ textAlign: 'center', padding: '2px' }}>Stb</th>
+                          <th style={{ textAlign: 'center', padding: '2px' }}>Scr</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {course.holes.slice(0, config.holes).map(h => {
+                          const s = scores[h.number]?.[p.id] || 0;
+                          const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                          const net = s > 0 ? s - hcpStrokes : '–';
+                          const stb = s > 0 ? calcStableford(s, h.par, hcpStrokes) : '–';
+                          const scr = s > 0 ? calcStableford(s, h.par, 0) : '–';
+                          return (
+                            <tr key={h.number} style={{ borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+                              <td style={{ textAlign: 'left', padding: '2px', fontWeight: 800 }}>{h.number}</td>
+                              <td style={{ textAlign: 'center', padding: '2px' }}>{s > 0 ? s : '–'}</td>
+                              <td style={{ textAlign: 'center', padding: '2px' }}>{net}</td>
+                              <td style={{ textAlign: 'center', padding: '2px' }}>{stb}</td>
+                              <td style={{ textAlign: 'center', padding: '2px' }}>{scr}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <>
+                    <div className="player-card-body">
+                      <div className="card-gross-score">{currentScore || 'P'}</div>
+                      <div className="card-relative-score">{currentScore > 0 ? displayDiff : 'P'}</div>
+                    </div>
 
-                <div className="player-card-footer">
-                  <div>Total: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes === 0 ? 'E' : totals[p.id].strokes - totalPar}</div>
-                  {(config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? (
-                    <div>Sindicato: {totals[p.id].sindicato} pts</div>
-                  ) : (
-                    <div>Stableford: {totals[p.id].netStableford} pts</div>
-                  )}
-                </div>
+                    <div className="player-card-footer">
+                      <div>Total: {totals[p.id].strokes - totalPar > 0 ? `+${totals[p.id].strokes - totalPar}` : totals[p.id].strokes === 0 ? 'E' : totals[p.id].strokes - totalPar}</div>
+                      {(config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? (
+                        <div>Sindicato: {totals[p.id].sindicato} pts</div>
+                      ) : (
+                        <div>Stableford: {totals[p.id].netStableford} pts</div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -1288,24 +1422,6 @@ export default function App() {
               <button className="btn btn-secondary" style={{ marginTop: '1rem', width: '100%' }} onClick={() => setShowQr(false)}>
                 Cerrar
               </button>
-            </div>
-          </div>
-        )}
-
-        {showCartas && (
-          <div className="modal-overlay" onClick={() => setShowCartas(false)} style={{ zIndex: 1000 }}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '95vw', maxWidth: '800px', height: '90vh', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ background: 'var(--primary)', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>Juego de Cartas</h3>
-                <button className="btn-icon-sm" onClick={() => setShowCartas(false)} style={{ color: 'white' }}>
-                  <X size={20} />
-                </button>
-              </div>
-              <iframe 
-                src="./JuegoCartas/cartas.html" 
-                style={{ width: '100%', flex: 1, border: 'none', zoom: '0.9' }}
-                title="Juego de Cartas"
-              />
             </div>
           </div>
         )}
