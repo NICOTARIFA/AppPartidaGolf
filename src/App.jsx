@@ -1028,10 +1028,10 @@ export default function App() {
               <div style={{ background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: '0.5rem', textAlign: 'center', padding: '2px 0' }}>BARRAS</div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '4px 0' }}>
                 {(config.tees === 'both' || config.tees === 'yellow') && (
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#facc15', boxShadow: '0 0 4px rgba(250,204,21,0.5)' }}></div>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#facc15', boxShadow: '0 0 4px rgba(250,204,21,0.5)' }}></div>
                 )}
                 {(config.tees === 'both' || config.tees === 'red') && (
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 4px rgba(239,68,68,0.5)' }}></div>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 4px rgba(239,68,68,0.5)' }}></div>
                 )}
               </div>
             </div>
