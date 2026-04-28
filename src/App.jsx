@@ -1217,6 +1217,26 @@ export default function App() {
             );
           })}
 
+          {/* Hole Progress Bar */}
+          <div style={{ display: 'flex', width: '100%', gap: '2px', padding: '4px 4px 0 4px', background: '#0f172a', flexShrink: 0 }}>
+            {Array.from({ length: 18 }).map((_, i) => {
+              // Si el hoyo ya fue pasado (i < holeIdx) o es el actual (i === holeIdx), en verde. Resto en gris.
+              const isPlayed = i <= holeIdx;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    height: '3px',
+                    borderRadius: '1px',
+                    background: isPlayed ? 'var(--primary)' : '#334155',
+                    transition: 'background 0.3s ease'
+                  }}
+                />
+              );
+            })}
+          </div>
+
           {/* Bottom hole navigation */}
           <div style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem', background: '#0f172a', flexShrink: 0 }}>
             <button
