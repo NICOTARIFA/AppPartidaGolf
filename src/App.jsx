@@ -1055,7 +1055,7 @@ export default function App() {
             {/* 5. DISTANCIA (Bandera) */}
             <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minWidth: '40px' }}>
               <div style={{ background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0' }}>
-                <Flag size={10} color="white" />
+                <Flag size={12} color="white" />
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px 0', fontSize: '0.65rem', fontWeight: 700, color: 'white' }}>
                 {(config.tees === 'both' || config.tees === 'yellow') && (
