@@ -102,7 +102,7 @@ export default function App() {
     try {
       const { data, error } = await supabase.from('courses').select('*').order('name', { ascending: true });
       if (error) { console.error('Error fetching courses:', error); return; }
-      
+
       if (data && data.length > 0) {
         setCourses(data);
         if (!selectedCourseId) {
@@ -332,7 +332,7 @@ export default function App() {
   const saveCourseForm = async () => {
     let payload = { ...courseFormData };
     if (!payload.id || payload.id.startsWith('new-')) delete payload.id;
-    
+
     try {
       if (payload.id) {
         const { data, error } = await supabase.from('courses').update(payload).eq('id', payload.id).select();
@@ -1097,7 +1097,7 @@ export default function App() {
               <div style={{ background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0' }}>
                 <Flag size={12} color="white" />
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px 0', fontSize: '0.65rem', fontWeight: 700, color: 'white' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px 0', fontSize: '0.55rem', fontWeight: 800, color: 'white' }}>
                 {(config.tees === 'both' || config.tees === 'yellow') && (
                   <div>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
                 )}
