@@ -10,36 +10,6 @@ import { QRCodeSVG } from 'qrcode.react';
 const SUPABASE_URL = 'https://rulvzxpyeghfmyupnwka.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_rOJfO6SqNkrcVv245JpInA_qywetcUE';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-// ===== LOCAL STORAGE HELPERS =====
-const COURSES_KEY = 'partidagolf_courses';
-const COURSES_VERSION_KEY = 'partidagolf_courses_version';
-const CURRENT_VERSION = '3'; // Increment when defaultCourses.json changes
-
-function loadCourses() {
-  try {
-    const savedVersion = localStorage.getItem(COURSES_VERSION_KEY);
-    const raw = localStorage.getItem(COURSES_KEY);
-
-    if (raw && savedVersion === CURRENT_VERSION) {
-      const saved = JSON.parse(raw);
-      // Merge: keep default course IDs updated from JSON, preserve user-added courses
-      const defaultIds = new Set(defaultCourses.map(c => c.id));
-      const userCourses = saved.filter(c => !defaultIds.has(c.id));
-      return [...defaultCourses, ...userCourses];
-    }
-  } catch (_) { /* ignore */ }
-
-  // First load or version mismatch: use defaults and save them
-  localStorage.setItem(COURSES_VERSION_KEY, CURRENT_VERSION);
-  localStorage.setItem(COURSES_KEY, JSON.stringify(defaultCourses));
-  return [...defaultCourses];
-}
-
-function saveCourses(courses) {
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
-  localStorage.setItem(COURSES_VERSION_KEY, CURRENT_VERSION);
-}
-
 // ===== SCORING HELPERS =====
 function calcStableford(strokes, par, handicapStrokes = 0) {
   if (strokes <= 0) return 0;
@@ -122,9 +92,38 @@ function calcSindicatoPoints(holeStablefordScores) {
 
 export default function App() {
   const [screen, setScreen] = useState('setup');
-  const [courses, setCourses] = useState(loadCourses);
-  const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || '');
-  const [course, setCourse] = useState(courses[0] || { name: 'Nuevo Campo', holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 })) });
+  const [courses, setCourses] = useState([]);
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [courseSearch, setCourseSearch] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [course, setCourse] = useState({ name: 'Nuevo Campo', holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 })) });
+
+  const fetchCourses = async () => {
+    try {
+      const { data, error } = await supabase.from('courses').select('*').order('name', { ascending: true });
+      if (error) { console.error('Error fetching courses:', error); return; }
+      
+      if (data && data.length > 0) {
+        setCourses(data);
+        if (!selectedCourseId) {
+          setSelectedCourseId(data[0].id);
+          setCourse(data[0]);
+        }
+      } else {
+        const toInsert = defaultCourses.map(({ id, ...rest }) => rest);
+        const { data: inserted, error: insertError } = await supabase.from('courses').insert(toInsert).select();
+        if (inserted && inserted.length > 0) {
+          setCourses(inserted);
+          if (!selectedCourseId) {
+            setSelectedCourseId(inserted[0].id);
+            setCourse(inserted[0]);
+          }
+        }
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => { fetchCourses(); }, []);
   const [config, setConfig] = useState({
     name: 'Partida Amistosa',
     date: new Date().toISOString().split('T')[0],
@@ -244,9 +243,6 @@ export default function App() {
     }
   }, [holeIdx]);
 
-  // Persist courses when they change
-  useEffect(() => { saveCourses(courses); }, [courses]);
-
   // === Real-time sync ===
   useEffect(() => {
     if (!matchId) return;
@@ -333,34 +329,48 @@ export default function App() {
     setShowCourseForm(true);
   };
 
-  const saveCourseForm = () => {
-    const updated = [...courses];
-    const idx = updated.findIndex(c => c.id === courseFormData.id);
-    if (idx >= 0) {
-      updated[idx] = courseFormData;
-    } else {
-      updated.push(courseFormData);
-    }
-    setCourses(updated);
-    if (selectedCourseId === courseFormData.id) {
-      setCourse(JSON.parse(JSON.stringify(courseFormData)));
-    }
-    setShowCourseForm(false);
+  const saveCourseForm = async () => {
+    let payload = { ...courseFormData };
+    if (!payload.id || payload.id.startsWith('new-')) delete payload.id;
+    
+    try {
+      if (payload.id) {
+        const { data, error } = await supabase.from('courses').update(payload).eq('id', payload.id).select();
+        if (!error && data) {
+          setCourses(courses.map(c => c.id === payload.id ? data[0] : c));
+          if (selectedCourseId === payload.id) setCourse(data[0]);
+        }
+      } else {
+        const { data, error } = await supabase.from('courses').insert(payload).select();
+        if (!error && data) setCourses([...courses, data[0]]);
+      }
+      setShowCourseForm(false);
+    } catch (e) { console.error('Error saving course', e); }
   };
 
-  const deleteCourseItem = (id) => {
-    if (courses.length <= 1) {
-      alert("No puedes eliminar el único campo.");
-      return;
-    }
-    if (window.confirm("¿Eliminar este campo?")) {
-      const updated = courses.filter(c => c.id !== id);
-      setCourses(updated);
-      if (selectedCourseId === id) {
-        setSelectedCourseId(updated[0].id);
-        setCourse(JSON.parse(JSON.stringify(updated[0])));
+  const deleteCourseItem = async (id) => {
+    if (courses.length <= 1) { alert("No puedes eliminar el único campo."); return; }
+    if (!window.confirm("¿Eliminar este campo?")) return;
+
+    try {
+      const { error } = await supabase.from('courses').delete().eq('id', id);
+      if (!error) {
+        const updated = courses.filter(c => c.id !== id);
+        setCourses(updated);
+        if (selectedCourseId === id) {
+          setSelectedCourseId(updated[0].id);
+          setCourse(JSON.parse(JSON.stringify(updated[0])));
+        }
       }
-    }
+    } catch (e) { console.error(e); }
+  };
+
+  const toggleCourseFavorite = async (e, id, currentStatus) => {
+    e.stopPropagation();
+    try {
+      const { data, error } = await supabase.from('courses').update({ is_favorite: !currentStatus }).eq('id', id).select();
+      if (!error && data) setCourses(courses.map(c => c.id === id ? data[0] : c));
+    } catch (e) { console.error(e); }
   };
 
   // === Player management ===
@@ -658,6 +668,18 @@ export default function App() {
     }
   };
 
+  const filteredCourses = useMemo(() => {
+    let filtered = courses;
+    if (courseFilter === 'favs') {
+      filtered = filtered.filter(c => c.is_favorite);
+    }
+    if (courseSearch) {
+      const q = courseSearch.toLowerCase();
+      filtered = filtered.filter(c => c.name.toLowerCase().includes(q));
+    }
+    return filtered;
+  }, [courses, courseFilter, courseSearch]);
+
   // ======================== SETUP ========================
   if (screen === 'setup') {
     return (
@@ -680,14 +702,28 @@ export default function App() {
             </div>
           </div>
 
+
+
           {/* Course selector */}
           <div className="card">
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}><MapPin size={18} /> Campos</h2>
               <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={openNewCourseForm}><Plus size={14} /> Nuevo</button>
             </div>
-            <div className="course-list">
-              {courses.map(c => (
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input type="text" className="input" placeholder="Buscar por nombre..." style={{ paddingLeft: '2.2rem' }} value={courseSearch} onChange={e => setCourseSearch(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className={`btn-chip ${courseFilter === 'all' ? 'active' : ''}`} onClick={() => setCourseFilter('all')}>Todos</button>
+                <button className={`btn-chip ${courseFilter === 'favs' ? 'active' : ''}`} onClick={() => setCourseFilter('favs')}>Favoritos</button>
+              </div>
+            </div>
+
+            <div className="course-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+              {filteredCourses.map(c => (
                 <div key={c.id} className={`course-item ${selectedCourseId === c.id ? 'selected' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem' }}>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => selectCourse(c.id)}>
                     {c.logo ? (
@@ -698,15 +734,19 @@ export default function App() {
                       </div>
                     )}
                     <div>
-                      <div className="course-item-name">{c.name}</div>
+                      <div className="course-item-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {c.name}
+                        {c.is_favorite && <Star size={14} color="#facc15" fill="#facc15" />}
+                      </div>
                       <div className="course-item-info">Par {c.holes.reduce((s, h) => s + h.par, 0)} · 18 hoyos</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button className="btn-icon-sm" onClick={(e) => toggleCourseFavorite(e, c.id, c.is_favorite)}>
+                      <Star size={16} color={c.is_favorite ? '#facc15' : 'var(--text-muted)'} fill={c.is_favorite ? '#facc15' : 'none'} />
+                    </button>
                     <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openEditCourseForm(c); }}><Edit3 size={16} color="var(--primary)" /></button>
-                    {courses.length > 1 && (
-                      <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); deleteCourseItem(c.id); }}><Trash2 size={16} color="var(--danger)" /></button>
-                    )}
+                    <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); deleteCourseItem(c.id); }}><Trash2 size={16} color="var(--danger)" /></button>
                   </div>
                 </div>
               ))}
