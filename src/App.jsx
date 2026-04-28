@@ -1269,7 +1269,7 @@ export default function App() {
                 key={p.id}
                 className={`player-card-v2 ${isFlipped ? '' : `player-${idx % 4}`}`}
                 style={{
-                  ...(isFlipped ? { background: '#fef9c3', color: '#000000', border: '2px solid #d69e2e', minHeight: '240px' } : {})
+                  ...(isFlipped ? { background: '#F2F0C9', color: '#000000', border: '2px solid #d69e2e', minHeight: '240px' } : {})
                 }}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
@@ -1311,7 +1311,7 @@ export default function App() {
                       const renderPart = (start, end) => {
                         const holesSlice = course.holes.slice(start, end);
                         let sumPar = 0, sumGol = 0, sumNet = 0, sumStb = 0, sumScr = 0;
-                        
+
                         holesSlice.forEach(h => {
                           sumPar += h.par || 0;
                           const s = scores[h.number]?.[p.id] || 0;
