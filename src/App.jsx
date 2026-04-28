@@ -1200,19 +1200,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="player-dashboard"
-          onTouchStart={(e) => {
-            const touch = e.touches[0];
-            e.currentTarget._swipeStartY = touch.clientY;
-          }}
-          onTouchEnd={(e) => {
-            const endY = e.changedTouches[0].clientY;
-            const startY = e.currentTarget._swipeStartY || 0;
-            if (startY - endY > 100) { // swipe up > 100px
-              setScreen('results');
-            }
-          }}
-        >
+        <main className="player-dashboard">
           {players.map((p, idx) => {
             const currentScore = scores[hole.number]?.[p.id] || 0;
             const diff = currentScore > 0 ? currentScore - hole.par : 0;
@@ -1292,19 +1280,29 @@ export default function App() {
                 <div className="player-card-header" style={{
                   background: isFlipped ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.12)',
                   borderBottom: isFlipped ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.2)',
-                  color: isFlipped ? '#000000' : '#ffffff'
+                  color: isFlipped ? '#000000' : '#ffffff',
+                  padding: '0.25rem 0.5rem'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: p.photo ? 'none' : (isFlipped ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                      {p.photo ? (
-                        <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <Users size={14} color={isFlipped ? '#000000' : '#ffffff'} />
-                      )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: p.photo ? 'none' : (isFlipped ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'), display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                        {p.photo ? (
+                          <img src={p.photo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Users size={12} color={isFlipped ? '#000000' : '#ffffff'} />
+                        )}
+                      </div>
+                      <span style={{ color: isFlipped ? '#000000' : '#ffffff', fontWeight: 800, fontSize: '0.75rem' }}>{p.name.toUpperCase()} ({p.handicap})</span>
                     </div>
-                    <span style={{ color: isFlipped ? '#000000' : '#ffffff' }}>{p.name.toUpperCase()}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px', opacity: 0.95 }}>
+                      <span style={{ color: isFlipped ? '#000000' : '#ffffff', fontSize: '0.62rem', fontWeight: 600 }}>
+                        Stb Bru: {totals[p.id].stableford} pts
+                      </span>
+                      <span style={{ color: isFlipped ? '#000000' : '#ffffff', fontSize: '0.62rem', fontWeight: 600 }}>
+                        Stb Net: {totals[p.id].netStableford} pts
+                      </span>
+                    </div>
                   </div>
-                  <span style={{ color: isFlipped ? '#000000' : '#ffffff' }}>({p.handicap})</span>
                 </div>
 
                 {isFlipped ? (
@@ -1312,6 +1310,20 @@ export default function App() {
                     {(() => {
                       const renderPart = (start, end) => {
                         const holesSlice = course.holes.slice(start, end);
+                        let sumPar = 0, sumGol = 0, sumNet = 0, sumStb = 0, sumScr = 0;
+                        
+                        holesSlice.forEach(h => {
+                          sumPar += h.par || 0;
+                          const s = scores[h.number]?.[p.id] || 0;
+                          if (s > 0) {
+                            sumGol += s;
+                            const hcpStrokes = getHoleHandicapStrokes(p.handicap, h.handicap);
+                            sumNet += (s - hcpStrokes);
+                            sumStb += calcStableford(s, h.par, hcpStrokes);
+                            sumScr += calcStableford(s, h.par, 0);
+                          }
+                        });
+
                         return (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem', color: '#000000' }}>
                             <thead>
@@ -1320,9 +1332,17 @@ export default function App() {
                                 {holesSlice.map(h => (
                                   <th key={`th-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{h.number}</th>
                                 ))}
+                                <th style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800, width: '32px' }}>Tot</th>
                               </tr>
                             </thead>
                             <tbody>
+                              <tr>
+                                <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>Par</td>
+                                {holesSlice.map(h => (
+                                  <td key={`par-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>{h.par}</td>
+                                ))}
+                                <td style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{sumPar}</td>
+                              </tr>
                               <tr>
                                 <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>Gol</td>
                                 {holesSlice.map(h => {
@@ -1345,6 +1365,7 @@ export default function App() {
                                     </td>
                                   );
                                 })}
+                                <td style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{sumGol > 0 ? sumGol : '–'}</td>
                               </tr>
                               <tr>
                                 <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Net</td>
@@ -1354,6 +1375,7 @@ export default function App() {
                                   const net = s > 0 ? s - hcpStrokes : '–';
                                   return <td key={`net-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{net}</td>;
                                 })}
+                                <td style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{sumNet !== 0 ? sumNet : '–'}</td>
                               </tr>
                               <tr>
                                 <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Stb</td>
@@ -1363,6 +1385,7 @@ export default function App() {
                                   const stb = s > 0 ? calcStableford(s, h.par, hcpStrokes) : '–';
                                   return <td key={`stb-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{stb}</td>;
                                 })}
+                                <td style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{sumStb}</td>
                               </tr>
                               <tr>
                                 <td style={{ textAlign: 'left', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 600 }}>Scr</td>
@@ -1371,6 +1394,7 @@ export default function App() {
                                   const scr = s > 0 ? calcStableford(s, h.par, 0) : '–';
                                   return <td key={`scr-${h.number}`} style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>{scr}</td>;
                                 })}
+                                <td style={{ textAlign: 'center', padding: '3px', border: '1px solid rgba(0,0,0,0.15)', fontWeight: 800 }}>{sumScr}</td>
                               </tr>
                             </tbody>
                           </table>
