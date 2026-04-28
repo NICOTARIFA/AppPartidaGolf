@@ -3,96 +3,24 @@
     "id": "lacanada",
     "name": "Club de Golf La Cañada",
     "holes": [
-      {
-        "number": 1,
-        "par": 4,
-        "handicap": 6
-      },
-      {
-        "number": 2,
-        "par": 3,
-        "handicap": 14
-      },
-      {
-        "number": 3,
-        "par": 5,
-        "handicap": 8
-      },
-      {
-        "number": 4,
-        "par": 3,
-        "handicap": 18
-      },
-      {
-        "number": 5,
-        "par": 5,
-        "handicap": 10
-      },
-      {
-        "number": 6,
-        "par": 4,
-        "handicap": 16
-      },
-      {
-        "number": 7,
-        "par": 4,
-        "handicap": 2
-      },
-      {
-        "number": 8,
-        "par": 4,
-        "handicap": 12
-      },
-      {
-        "number": 9,
-        "par": 4,
-        "handicap": 4
-      },
-      {
-        "number": 10,
-        "par": 5,
-        "handicap": 7
-      },
-      {
-        "number": 11,
-        "par": 3,
-        "handicap": 17
-      },
-      {
-        "number": 12,
-        "par": 4,
-        "handicap": 1
-      },
-      {
-        "number": 13,
-        "par": 5,
-        "handicap": 11
-      },
-      {
-        "number": 14,
-        "par": 4,
-        "handicap": 3
-      },
-      {
-        "number": 15,
-        "par": 3,
-        "handicap": 15
-      },
-      {
-        "number": 16,
-        "par": 4,
-        "handicap": 13
-      },
-      {
-        "number": 17,
-        "par": 3,
-        "handicap": 5
-      },
-      {
-        "number": 18,
-        "par": 4,
-        "handicap": 9
-      }
+      { "number": 1, "handicap": 6, "par": 4, "yellow": 312 },
+      { "number": 2, "handicap": 14, "par": 3, "yellow": 139 },
+      { "number": 3, "handicap": 8, "par": 5, "yellow": 453 },
+      { "number": 4, "handicap": 18, "par": 3, "yellow": 118 },
+      { "number": 5, "handicap": 10, "par": 5, "yellow": 462 },
+      { "number": 6, "handicap": 16, "par": 4, "yellow": 294 },
+      { "number": 7, "handicap": 2, "par": 4, "yellow": 363 },
+      { "number": 8, "handicap": 12, "par": 4, "yellow": 319 },
+      { "number": 9, "handicap": 4, "par": 4, "yellow": 363 },
+      { "number": 10, "handicap": 7, "par": 5, "yellow": 487 },
+      { "number": 11, "handicap": 17, "par": 3, "yellow": 129 },
+      { "number": 12, "handicap": 1, "par": 4, "yellow": 363 },
+      { "number": 13, "handicap": 11, "par": 5, "yellow": 518 },
+      { "number": 14, "handicap": 3, "par": 4, "yellow": 380 },
+      { "number": 15, "handicap": 15, "par": 3, "yellow": 143 },
+      { "number": 16, "handicap": 13, "par": 4, "yellow": 322 },
+      { "number": 17, "handicap": 5, "par": 3, "yellow": 135 },
+      { "number": 18, "handicap": 9, "par": 4, "yellow": 338 }
     ]
   }
 ]
