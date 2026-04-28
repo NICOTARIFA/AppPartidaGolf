@@ -1014,18 +1014,18 @@ export default function App() {
           </div>
 
           {/* Compact Hole Navigation inside Header */}
-          <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center', maxWidth: '190px' }}>
+          <div style={{ display: 'flex', gap: '4px', flex: 1, justifyContent: 'center', maxWidth: '200px' }}>
             {/* Left Card: Hole Number */}
-            <div style={{ background: 'white', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', width: '46px', flexShrink: 0 }}>
-              <div style={{ background: '#3b82f6', color: 'white', fontWeight: 800, fontSize: '0.55rem', textAlign: 'center', padding: '2px 0' }}>HOYO</div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
+            <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', width: '46px', flexShrink: 0 }}>
+              <div style={{ background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: '0.55rem', textAlign: 'center', padding: '2px 0' }}>HOYO</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>
                 {hole.number}
               </div>
             </div>
             
             {/* Right Card: Info */}
-            <div style={{ background: '#e0f2fe', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
-              <div style={{ background: '#3b82f6', color: 'white', fontWeight: 800, fontSize: '0.55rem', display: 'flex', padding: '2px 4px' }}>
+            <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 800, fontSize: '0.55rem', display: 'flex', padding: '2px 4px' }}>
                 <div style={{ width: '12px' }}></div>
                 <div style={{ flex: 1, textAlign: 'center' }}>PAR</div>
                 <div style={{ flex: 1, textAlign: 'center' }}>HCP</div>
@@ -1033,23 +1033,23 @@ export default function App() {
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 4px', gap: '2px' }}>
                 {(config.tees === 'both' || config.tees === 'yellow') && (
-                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#334155', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 700 }}>
                     <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#facc15' }}></div>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#facc15', boxShadow: '0 0 4px rgba(250,204,21,0.5)' }}></div>
                     </div>
                     <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
                     <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
-                    <div style={{ width: '32px', textAlign: 'right' }}>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
+                    <div style={{ width: '32px', textAlign: 'right', color: 'white' }}>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
                   </div>
                 )}
                 {(config.tees === 'both' || config.tees === 'red') && (
-                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#334155', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 700 }}>
                     <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></div>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 4px rgba(239,68,68,0.5)' }}></div>
                     </div>
                     <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
                     <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
-                    <div style={{ width: '32px', textAlign: 'right' }}>{hole.red ? `${hole.red}m` : '-'}</div>
+                    <div style={{ width: '32px', textAlign: 'right', color: 'white' }}>{hole.red ? `${hole.red}m` : '-'}</div>
                   </div>
                 )}
               </div>
