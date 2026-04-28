@@ -205,30 +205,30 @@
                 </div>
               </div>
               
-              <div className={`${isLarge ? 'h-64' : 'h-40'} flex items-center justify-center relative bg-white/40 m-4 rounded-[35px] border-4 border-black/10 overflow-hidden`}>
-                 <div className={`relative ${isLarge ? 'w-48 h-48' : 'w-28 h-28'} bg-white rounded-full border-[8px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 flex items-center justify-center`}>
+              <div className={`${isLarge ? 'h-40 sm:h-64' : 'h-40'} flex items-center justify-center relative bg-white/40 m-4 rounded-[35px] border-4 border-black/10 overflow-hidden shrink-0`}>
+                 <div className={`relative ${isLarge ? 'w-32 h-32 sm:w-48 sm:h-48' : 'w-28 h-28'} bg-white rounded-full border-[8px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 flex items-center justify-center`}>
                     <IconComponent />
                  </div>
                  {isCustom && (
                     <div className="absolute top-4 right-4 bg-yellow-300 p-3 rounded-2xl border-4 border-black rotate-12 animate-bounce">
-                      <Sparkles size={isLarge ? 32 : 20} className="text-black" />
+                      <Sparkles size={isLarge ? 24 : 20} className="text-black" />
                     </div>
                  )}
               </div>
 
-              <div className="flex-1 bg-white m-4 mt-0 rounded-[30px] p-6 flex flex-col border-[6px] border-black shadow-inner">
-                <h3 className={`${isLarge ? 'text-4xl' : 'text-2xl'} font-black text-gray-900 leading-none mb-3 uppercase italic tracking-tighter border-b-[10px] border-yellow-400 pb-2`}>
+              <div className="flex-1 bg-white m-4 mt-0 rounded-[30px] p-4 sm:p-6 flex flex-col border-[6px] border-black shadow-inner min-h-0">
+                <h3 className={`${isLarge ? 'text-2xl sm:text-4xl' : 'text-2xl'} font-black text-gray-900 leading-none mb-2 sm:mb-3 uppercase italic tracking-tighter border-b-[8px] sm:border-b-[10px] border-yellow-400 pb-2 shrink-0`}>
                   {title}
                 </h3>
                 
-                <div className="flex-1 overflow-y-auto">
-                  <p className={`text-gray-900 ${isLarge ? 'text-3xl' : 'text-xl'} font-black leading-tight tracking-tight`}>
+                <div className="flex-1 overflow-y-auto no-scrollbar">
+                  <p className={`text-gray-900 ${isLarge ? 'text-xl sm:text-3xl' : 'text-xl'} font-black leading-tight tracking-tight`}>
                     {description}
                   </p>
                 </div>
 
-                <div className="mt-3 pt-3 border-t-4 border-dashed border-gray-200">
-                  <p className={`${isLarge ? 'text-lg' : 'text-[10px]'} italic text-gray-500 font-black uppercase opacity-60`}>
+                <div className="mt-2 pt-2 sm:mt-3 sm:pt-3 border-t-4 border-dashed border-gray-200 shrink-0">
+                  <p className={`${isLarge ? 'text-sm sm:text-lg' : 'text-[10px]'} italic text-gray-500 font-black uppercase opacity-60`}>
                     "{flavorText}"
                   </p>
                 </div>
