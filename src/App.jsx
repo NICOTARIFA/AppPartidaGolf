@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3, Search, X } from 'lucide-react';
+import { Trophy, Plus, Minus, ChevronLeft, ChevronRight, Play, RefreshCcw, Settings, Users, BarChart3, Award, Target, MapPin, Trash2, Save, FileDown, Share2, QrCode, Star, Camera, Edit3, Search, X, Flag } from 'lucide-react';
 import defaultCourses from './defaultCourses.json';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -151,6 +151,8 @@ export default function App() {
   const [playerSearch, setPlayerSearch] = useState('');
   const [showPlayerForm, setShowPlayerForm] = useState(null); // null=closed, 'new'=create, or player object for edit
   const [playerFormData, setPlayerFormData] = useState({ name: '', surname: '', license_number: '', handicap: 0, photo: null });
+  const [showCourseForm, setShowCourseForm] = useState(false);
+  const [courseFormData, setCourseFormData] = useState({ id: '', name: '', logo: null, holes: [] });
 
   // Refs to avoid stale closures in real-time subscriptions
   const scoresRef = useRef(scores);
@@ -312,36 +314,52 @@ export default function App() {
     if (c) { setSelectedCourseId(id); setCourse(JSON.parse(JSON.stringify(c))); }
   };
 
-  const saveCurrentCourse = () => {
-    const idx = courses.findIndex(c => c.id === selectedCourseId);
+  const openNewCourseForm = () => {
+    setCourseFormData({
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+      name: 'Nuevo Campo',
+      logo: null,
+      holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1, yellow: 0, red: 0 }))
+    });
+    setShowCourseForm(true);
+  };
+
+  const openEditCourseForm = (c) => {
+    setCourseFormData(JSON.parse(JSON.stringify({
+      ...c,
+      holes: c.holes.map(h => ({ ...h, yellow: h.yellow || 0, red: h.red || 0 }))
+    })));
+    setShowCourseForm(true);
+  };
+
+  const saveCourseForm = () => {
     const updated = [...courses];
+    const idx = updated.findIndex(c => c.id === courseFormData.id);
     if (idx >= 0) {
-      updated[idx] = { ...course, id: selectedCourseId };
+      updated[idx] = courseFormData;
     } else {
-      const newId = 'course-' + Date.now();
-      updated.push({ ...course, id: newId });
-      setSelectedCourseId(newId);
+      updated.push(courseFormData);
     }
     setCourses(updated);
+    if (selectedCourseId === courseFormData.id) {
+      setCourse(JSON.parse(JSON.stringify(courseFormData)));
+    }
+    setShowCourseForm(false);
   };
 
-  const addNewCourse = () => {
-    const newId = 'course-' + Date.now();
-    const newCourse = {
-      id: newId,
-      name: 'Nuevo Campo',
-      holes: Array.from({ length: 18 }, (_, i) => ({ number: i + 1, par: 4, handicap: i + 1 }))
-    };
-    setCourses([...courses, newCourse]);
-    setSelectedCourseId(newId);
-    setCourse(JSON.parse(JSON.stringify(newCourse)));
-  };
-
-  const deleteCourse = (id) => {
-    if (courses.length <= 1) return;
-    const updated = courses.filter(c => c.id !== id);
-    setCourses(updated);
-    if (selectedCourseId === id) { setSelectedCourseId(updated[0].id); setCourse(JSON.parse(JSON.stringify(updated[0]))); }
+  const deleteCourseItem = (id) => {
+    if (courses.length <= 1) {
+      alert("No puedes eliminar el único campo.");
+      return;
+    }
+    if (window.confirm("¿Eliminar este campo?")) {
+      const updated = courses.filter(c => c.id !== id);
+      setCourses(updated);
+      if (selectedCourseId === id) {
+        setSelectedCourseId(updated[0].id);
+        setCourse(JSON.parse(JSON.stringify(updated[0])));
+      }
+    }
   };
 
   // === Player management ===
@@ -663,13 +681,31 @@ export default function App() {
 
           {/* Course selector */}
           <div className="card">
-            <h2 className="card-title"><MapPin size={18} /> Seleccionar Campo</h2>
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h2 className="card-title" style={{ margin: 0 }}><MapPin size={18} /> Campos</h2>
+              <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={openNewCourseForm}><Plus size={14}/> Nuevo</button>
+            </div>
             <div className="course-list">
               {courses.map(c => (
-                <div key={c.id} className={`course-item ${selectedCourseId === c.id ? 'selected' : ''}`} onClick={() => selectCourse(c.id)}>
-                  <div>
-                    <div className="course-item-name">{c.name}</div>
-                    <div className="course-item-info">Par {c.holes.reduce((s, h) => s + h.par, 0)} · 18 hoyos</div>
+                <div key={c.id} className={`course-item ${selectedCourseId === c.id ? 'selected' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => selectCourse(c.id)}>
+                    {c.logo ? (
+                      <img src={c.logo} alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(15,23,42,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <MapPin size={20} color="var(--primary)" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="course-item-name">{c.name}</div>
+                      <div className="course-item-info">Par {c.holes.reduce((s, h) => s + h.par, 0)} · 18 hoyos</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openEditCourseForm(c); }}><Edit3 size={16} color="var(--primary)" /></button>
+                    {courses.length > 1 && (
+                      <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); deleteCourseItem(c.id); }}><Trash2 size={16} color="var(--danger)" /></button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -862,6 +898,65 @@ export default function App() {
           )}
 
 
+          {/* Course Form Modal */}
+          {showCourseForm && (
+            <div className="modal-overlay" onClick={() => setShowCourseForm(false)}>
+              <div className="modal-content" style={{ maxWidth: '600px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '1rem' }} onClick={e => e.stopPropagation()}>
+                <div className="flex-between" style={{ marginBottom: '1rem', flexShrink: 0 }}>
+                  <h3 style={{ margin: 0 }}>{courseFormData.id ? 'Editar Campo' : 'Nuevo Campo'}</h3>
+                  <button className="btn-icon-sm" onClick={() => setShowCourseForm(false)}><X size={20} /></button>
+                </div>
+                <div style={{ overflowY: 'auto', paddingRight: '0.5rem', flex: 1 }}>
+                  {/* Photo/Logo */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                    <label style={{ cursor: 'pointer' }}>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handlePhotoFile(e.target.files[0], (dataUrl) => setCourseFormData(prev => ({ ...prev, logo: dataUrl })))} />
+                      <div style={{ width: '80px', height: '80px', borderRadius: '12px', background: courseFormData.logo ? 'none' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '3px solid var(--primary)' }}>
+                        {courseFormData.logo ? (
+                          <img src={courseFormData.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Camera size={28} color="#94a3b8" />
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  <div className="form-group">
+                    <label>Nombre del Campo *</label>
+                    <input className="input" value={courseFormData.name} onChange={e => setCourseFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Nombre del campo" />
+                  </div>
+                  <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Hoyos (18)</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {courseFormData.holes.map((h, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontWeight: 800, width: '20px', textAlign: 'center', color: 'var(--primary)' }}>{h.number}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <label style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Par</label>
+                          <input type="number" min="3" max="6" className="input" style={{ padding: '0.25rem' }} value={h.par} onChange={e => { const holes = [...courseFormData.holes]; holes[i].par = parseInt(e.target.value)||3; setCourseFormData({...courseFormData, holes}); }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <label style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HCP</label>
+                          <input type="number" min="1" max="18" className="input" style={{ padding: '0.25rem' }} value={h.handicap} onChange={e => { const holes = [...courseFormData.holes]; holes[i].handicap = parseInt(e.target.value)||1; setCourseFormData({...courseFormData, holes}); }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.2 }}>
+                          <label style={{ fontSize: '0.6rem', color: '#ca8a04' }}>Am. (m)</label>
+                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.yellow} onChange={e => { const holes = [...courseFormData.holes]; holes[i].yellow = parseInt(e.target.value)||0; setCourseFormData({...courseFormData, holes}); }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.2 }}>
+                          <label style={{ fontSize: '0.6rem', color: '#dc2626' }}>Ro. (m)</label>
+                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.red} onChange={e => { const holes = [...courseFormData.holes]; holes[i].red = parseInt(e.target.value)||0; setCourseFormData({...courseFormData, holes}); }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', flexShrink: 0 }} onClick={saveCourseForm}>
+                  <Save size={18} /> Guardar Campo
+                </button>
+              </div>
+            </div>
+          )}
+
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <button className="btn btn-primary" onClick={() => startNewMatch(false)}>
               <Play size={18} /> Empezar Localmente
@@ -883,15 +978,11 @@ export default function App() {
 
     return (
       <div className="app-container fade-in playing-screen">
-        <header className="golf-tracker-header" style={{ padding: '0.5rem 0.75rem' }}>
+        <header className="golf-tracker-header" style={{ padding: '0.5rem 0.75rem', justifyContent: 'space-between' }}>
           <button style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, minHeight: '36px', cursor: 'pointer' }} onClick={handleExitPlaying}>
             Fin
           </button>
-          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px 14px' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
-              Hoyo: {hole.number} · Par: {hole.par} · Hcp: {hole.handicap}
-            </div>
-          </div>
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '8px', minWidth: '40px', minHeight: '40px' }} onClick={() => setScreen('results')} title="Ver Clasificación">
               <Trophy size={26} />
@@ -903,6 +994,47 @@ export default function App() {
             )}
           </div>
         </header>
+
+        {/* Hole Navigation Cards */}
+        <div style={{ display: 'flex', gap: '0.5rem', margin: '0.75rem 1rem' }}>
+          {/* Left Card: Hole Number */}
+          <div style={{ flex: '0 0 80px', background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#60a5fa', color: 'white', fontWeight: 800, fontSize: '0.75rem', textAlign: 'center', padding: '0.25rem 0', letterSpacing: '1px' }}>HOYO</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: '#1e293b' }}>
+              {hole.number}
+            </div>
+          </div>
+          
+          {/* Right Card: Info */}
+          <div style={{ flex: 1, background: '#e0f2fe', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#60a5fa', color: 'white', fontWeight: 800, fontSize: '0.75rem', display: 'flex', padding: '0.25rem 0.5rem' }}>
+              <div style={{ flex: 1 }}></div>
+              <div style={{ flex: 1, textAlign: 'center' }}>PAR</div>
+              <div style={{ flex: 1, textAlign: 'center' }}>HCP</div>
+              <div style={{ width: '40px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Flag size={14} color="white" />
+              </div>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0.25rem 0.5rem', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Users size={12} /> <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#facc15' }}></div>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
+                <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
+                <div style={{ width: '40px', textAlign: 'right' }}>{hole.yellow ? `${hole.yellow}m` : '-'}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Users size={12} /> <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }}></div>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center' }}>{hole.par}</div>
+                <div style={{ flex: 1, textAlign: 'center' }}>{hole.handicap}</div>
+                <div style={{ width: '40px', textAlign: 'right' }}>{hole.red ? `${hole.red}m` : '-'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <main className="player-dashboard"
           onTouchStart={(e) => {
@@ -1066,10 +1198,18 @@ export default function App() {
       <main className="content-area">
         <div id="results-pdf-area" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: '#f8fafc' }}>
           {/* PDF Report Header */}
-          <div style={{ textAlign: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
-            <h1 style={{ margin: 0, fontSize: '1.75rem', color: 'var(--primary)', fontWeight: 900 }}>Informe de Partida de Golf</h1>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '0.5rem' }}>{config.name}</div>
-            <div style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '0.25rem' }}>Fecha: {config.date} | Campo: {course.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+            {course.logo && (
+              <div style={{ flexShrink: 0, marginRight: '1rem' }}>
+                <img src={course.logo} alt="Logo del campo" style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
+              </div>
+            )}
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <h1 style={{ margin: 0, fontSize: '1.75rem', color: 'var(--primary)', fontWeight: 900 }}>Informe de Partida de Golf</h1>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: '0.5rem' }}>{config.name}</div>
+              <div style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '0.25rem' }}>Fecha: {config.date} | Campo: {course.name}</div>
+            </div>
+            {course.logo && <div style={{ width: '60px', marginLeft: '1rem' }}></div>} {/* Spacer for centering */}
           </div>
 
           <div className="winner-card">
