@@ -684,7 +684,7 @@ export default function App() {
           <div className="card">
             <div className="flex-between" style={{ marginBottom: '1rem' }}>
               <h2 className="card-title" style={{ margin: 0 }}><MapPin size={18} /> Campos</h2>
-              <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={openNewCourseForm}><Plus size={14}/> Nuevo</button>
+              <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={openNewCourseForm}><Plus size={14} /> Nuevo</button>
             </div>
             <div className="course-list">
               {courses.map(c => (
@@ -729,23 +729,23 @@ export default function App() {
             <div className="form-group" style={{ marginTop: '0.75rem' }}>
               <label>Barras de Salida</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
-                  className={`btn-chip ${config.tees === 'yellow' ? 'active' : ''}`} 
-                  onClick={() => setConfig({ ...config, tees: 'yellow' })} 
+                <button
+                  className={`btn-chip ${config.tees === 'yellow' ? 'active' : ''}`}
+                  onClick={() => setConfig({ ...config, tees: 'yellow' })}
                   style={{ flex: 1, justifyContent: 'center', background: config.tees === 'yellow' ? '#facc15' : 'transparent', color: config.tees === 'yellow' ? '#854d0e' : 'inherit', border: config.tees === 'yellow' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
                 >
                   Amarillas
                 </button>
-                <button 
-                  className={`btn-chip ${config.tees === 'red' ? 'active' : ''}`} 
-                  onClick={() => setConfig({ ...config, tees: 'red' })} 
+                <button
+                  className={`btn-chip ${config.tees === 'red' ? 'active' : ''}`}
+                  onClick={() => setConfig({ ...config, tees: 'red' })}
                   style={{ flex: 1, justifyContent: 'center', background: config.tees === 'red' ? '#ef4444' : 'transparent', color: config.tees === 'red' ? 'white' : 'inherit', border: config.tees === 'red' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
                 >
                   Rojas
                 </button>
-                <button 
-                  className={`btn-chip ${config.tees === 'both' ? 'active' : ''}`} 
-                  onClick={() => setConfig({ ...config, tees: 'both' })} 
+                <button
+                  className={`btn-chip ${config.tees === 'both' ? 'active' : ''}`}
+                  onClick={() => setConfig({ ...config, tees: 'both' })}
                   style={{ flex: 1, justifyContent: 'center', background: config.tees === 'both' ? '#64748b' : 'transparent', color: config.tees === 'both' ? 'white' : 'inherit', border: config.tees === 'both' ? 'none' : '1px solid #cbd5e1', padding: '0.35rem 0.25rem' }}
                 >
                   Ambas
@@ -958,19 +958,19 @@ export default function App() {
                         <div style={{ fontWeight: 800, width: '20px', textAlign: 'center', color: 'var(--primary)' }}>{h.number}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                           <label style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Par</label>
-                          <input type="number" min="3" max="6" className="input" style={{ padding: '0.25rem' }} value={h.par} onChange={e => { const holes = [...courseFormData.holes]; holes[i].par = parseInt(e.target.value)||3; setCourseFormData({...courseFormData, holes}); }} />
+                          <input type="number" min="3" max="6" className="input" style={{ padding: '0.25rem' }} value={h.par} onChange={e => { const holes = [...courseFormData.holes]; holes[i].par = parseInt(e.target.value) || 3; setCourseFormData({ ...courseFormData, holes }); }} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                           <label style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HCP</label>
-                          <input type="number" min="1" max="18" className="input" style={{ padding: '0.25rem' }} value={h.handicap} onChange={e => { const holes = [...courseFormData.holes]; holes[i].handicap = parseInt(e.target.value)||1; setCourseFormData({...courseFormData, holes}); }} />
+                          <input type="number" min="1" max="18" className="input" style={{ padding: '0.25rem' }} value={h.handicap} onChange={e => { const holes = [...courseFormData.holes]; holes[i].handicap = parseInt(e.target.value) || 1; setCourseFormData({ ...courseFormData, holes }); }} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.2 }}>
                           <label style={{ fontSize: '0.6rem', color: '#ca8a04' }}>Am. (m)</label>
-                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.yellow} onChange={e => { const holes = [...courseFormData.holes]; holes[i].yellow = parseInt(e.target.value)||0; setCourseFormData({...courseFormData, holes}); }} />
+                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.yellow} onChange={e => { const holes = [...courseFormData.holes]; holes[i].yellow = parseInt(e.target.value) || 0; setCourseFormData({ ...courseFormData, holes }); }} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1.2 }}>
                           <label style={{ fontSize: '0.6rem', color: '#dc2626' }}>Ro. (m)</label>
-                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.red} onChange={e => { const holes = [...courseFormData.holes]; holes[i].red = parseInt(e.target.value)||0; setCourseFormData({...courseFormData, holes}); }} />
+                          <input type="number" min="0" className="input" style={{ padding: '0.25rem' }} value={h.red} onChange={e => { const holes = [...courseFormData.holes]; holes[i].red = parseInt(e.target.value) || 0; setCourseFormData({ ...courseFormData, holes }); }} />
                         </div>
                       </div>
                     ))}
@@ -1022,18 +1022,18 @@ export default function App() {
                 {hole.number}
               </div>
             </div>
-            
+
             {/* Right Card: Info */}
             <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
-              <div style={{ background: 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 800, fontSize: '0.55rem', display: 'flex', padding: '2px 4px' }}>
-                <div style={{ width: '12px' }}></div>
+              <div style={{ background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: '0.55rem', display: 'flex', padding: '2px 4px' }}>
+                <div style={{ flex: 1, textAlign: 'center' }}>BARRAS</div>
                 <div style={{ flex: 1, textAlign: 'center' }}>PAR</div>
                 <div style={{ flex: 1, textAlign: 'center' }}>HCP</div>
                 <div style={{ width: '32px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Flag size={10} color="white" /></div>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2px 4px', gap: '2px' }}>
                 {(config.tees === 'both' || config.tees === 'yellow') && (
-                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#ffffffff', fontWeight: 700 }}>
                     <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#facc15', boxShadow: '0 0 4px rgba(250,204,21,0.5)' }}></div>
                     </div>
@@ -1043,7 +1043,7 @@ export default function App() {
                   </div>
                 )}
                 {(config.tees === 'both' || config.tees === 'red') && (
-                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#cbd5e1', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.65rem', color: '#ffffffff', fontWeight: 700 }}>
                     <div style={{ width: '12px', display: 'flex', alignItems: 'center' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 4px rgba(239,68,68,0.5)' }}></div>
                     </div>
@@ -1055,7 +1055,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          
+
           {/* Right Buttons: Trophy, QR */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button className="btn-icon" style={{ background: 'transparent', color: 'white', border: 'none', padding: '4px', minWidth: '36px', height: '100%' }} onClick={() => setScreen('results')} title="Ver Clasificación">
