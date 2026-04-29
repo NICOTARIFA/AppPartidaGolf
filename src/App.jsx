@@ -1427,8 +1427,7 @@ export default function App() {
                     </div>
 
                     <div className="player-card-footer">
-                      <div>Golpes Brutos: {totals[p.id].strokes}</div>
-                      <div>Netos : {totals[p.id].strokes-[p.id].handicap}</div>
+                      <div>Golpes Brutos: {totals[p.id].strokes}</div>                      
                       {(config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? (
                         <div>Sindicato: {totals[p.id].sindicato} pts</div>
                       ) : (
