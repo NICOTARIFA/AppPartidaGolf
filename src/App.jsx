@@ -1296,10 +1296,10 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px', opacity: 0.95 }}>
                       <span style={{ color: isFlipped ? '#000000' : '#ffffff', fontSize: '0.62rem', fontWeight: 600 }}>
-                        Stb Bru: {totals[p.id].stableford} pts
+                        Stableford Scratch: {totals[p.id].stableford} pts
                       </span>
                       <span style={{ color: isFlipped ? '#000000' : '#ffffff', fontSize: '0.62rem', fontWeight: 600 }}>
-                        Stb Net: {totals[p.id].netStableford} pts
+                        Stableford Neto: {totals[p.id].netStableford} pts
                       </span>
                     </div>
                   </div>
@@ -1431,7 +1431,7 @@ export default function App() {
                       {(config.system === 'Sindicato' || config.system === 'Sindicato Bruto') ? (
                         <div>Sindicato: {totals[p.id].sindicato} pts</div>
                       ) : (
-                        <div>Stableford: {totals[p.id].netStableford} pts</div>
+                        <div>Stableford Neto: {totals[p.id].netStableford} pts</div>
                       )}
                     </div>
                   </>
